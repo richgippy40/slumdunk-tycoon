@@ -1,110 +1,135 @@
 <!doctype html>
-<html lang="ko"
-  ><head
-    ><meta charset="utf-8" /><meta
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
       name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" /><meta
-      name="theme-color"
-      content="#9b1926" /><title>SLUMDUNK TYCOON — Stage 01</title
-    ><link rel="stylesheet" href="css/game.css" /></head
-  ><body
-    ><main class="wrap"
-      ><header class="top"
-        ><div class="topline"
-          ><div
-            ><div class="brand">🍔 SLUMDUNK TYCOON</div
-            ><div class="sub">STAGE 01 · 첫 영업</div></div
-          ><div style="font-size: 25px">★</div></div
-        ><div class="stats"
-          ><div class="stat"><small>현재 매출</small><strong id="sales">0원</strong></div
-          ><div class="stat"><small>목표 매출</small><strong id="target">350,000원</strong></div
-          ><div class="stat"><small>남은 시간</small><strong id="time">05:00</strong></div></div
-        ><div class="progress"><div id="salesbar"></div></div></header
-      ><div class="content"
-        ><section class="panel"
-          ><div class="panelhead"><span>🧑 손님 주문</span><span id="orderno">주문 #1</span></div
-          ><div class="order"
-            ><div class="customer"
-              ><div class="person" id="person">🧑</div><small id="customername">손님 1</small></div
-            ><div style="flex: 1"
-              ><div class="ordername">저스트치즈버거 × 1</div
-              ><div class="muted">단품 · 레시피 확인 가능</div
-              ><div class="price">8,900원 <span class="muted">(테스트 가격)</span></div></div
-            ><button class="ghost" style="padding: 8px" id="recipe">📋<br />레시피</button></div
-          ></section
-        ><div class="kitchen"
-          ><section class="panel station"
-            ><div class="sttitle">🔥 패티 그릴</div
-            ><img id="patty" class="pattyimg" src="assets/beef_raw.webp" alt="소고기 패티" /><div
-              class="gauge"
-              ><span></span><span></span><span></span><div class="needle" id="needle"></div></div
-            ><div class="gaugeinfo"
-              ><span id="cookpercent">0%</span><span id="cookzone">대기</span></div
-            ><button class="widebtn" id="cook">조리 시작</button
-            ><div class="state" id="cookstate">클릭해서 패티를 구워요</div></section
-          ><section class="panel station"
-            ><div class="sttitle">💰 판매 카운터</div
-            ><div style="font-size: 45px; padding-top: 12px">🛎️</div
-            ><div style="margin: 11px 0 4px; font-weight: 850" id="readycount">완성 버거 0개</div
-            ><div class="muted">완성 후 판매하세요</div
-            ><button class="widebtn" id="serve" disabled style="margin-top: 17px"
-              >손님에게 판매</button
-            ><div class="state" id="servestate">판매할 버거를 준비하세요</div></section
-          ></div
-        ><section class="panel"
-          ><div class="panelhead"><span>🍔 버거 조립대</span><span id="step">0 / 7</span></div
-          ><div class="assembly"
-            ><div class="assemblyarea"
-              ><div class="plate"></div><div class="stack" id="stack"></div></div
-            ><div class="buttons" id="ingredients"></div
-            ><div class="actionrow"
-              ><button class="ghost" id="undo">↶ 한 단계 취소</button
-              ><button class="widebtn" id="finish" disabled>버거 완성</button></div
-            ></div
-          ></section
-        ><div class="banner" id="notice"
-          >순서대로 재료를 누르고, 패티는 초록색에서 꺼내세요.</div
-        ></div
-      ></main
-    >
-    <div class="screen show" id="intro"
-      ><div class="modal"
-        ><span class="pill">MOBILE WEB GAME · V0.1</span><h1>SLUMDUNK<br />TYCOON</h1
-        ><p
-          >손님에게 저스트치즈버거를 판매하세요.<br />패티는
-          <b style="color: #259954">초록색 게이지</b>에서 꺼내고,<br />재료를 순서대로 클릭하면
-          됩니다.</p
-        ><p><b>목표 매출 350,000원 · 제한시간 5분</b></p
-        ><button class="widebtn" id="start">영업 시작!</button></div
-      ></div
-    >
-    <div class="screen" id="recipeModal"
-      ><div class="modal"
-        ><h1 style="font-size: 23px">📋 저스트치즈버거</h1
-        ><p
-          >아래 순서는 <b>프로토타입용</b>입니다.<br />최종 버거 조립 순서는 실제 레시피와 대조해
-          확정합니다.</p
-        ><div
-          id="recipelist"
-          style="
-            background: #f4e8d6;
-            padding: 12px;
-            border-radius: 12px;
-            line-height: 2;
-            font-weight: 800;
-            font-size: 14px;
-          "
-        ></div
-        ><button class="widebtn" id="closeRecipe">돌아가기</button></div
-      ></div
-    >
-    <div class="screen" id="result"
-      ><div class="modal"
-        ><span class="pill" id="resultsmall">STAGE 01</span><h1 id="resulttitle">STAGE CLEAR!</h1
-        ><p id="resultdesc"></p
-        ><div style="font-size: 30px; font-weight: 1000; color: #a72231" id="resultmoney"></div
-        ><button class="widebtn" onclick="location.reload()">다시 플레이</button></div
-      ></div
-    >
-    <script src="js/game.js"></script></body
-></html>
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <meta name="theme-color" content="#272326" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>SLUMDUNK TYCOON — Stage 01</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="css/game.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <!-- Background: retro diner (temporary CSS/SVG art) -->
+      <div class="diner">
+        <div class="wall"></div>
+        <div class="window w1"></div>
+        <div class="window w2"></div>
+        <div class="window w3"></div>
+        <div class="lamp l1"></div>
+        <div class="lamp l2"></div>
+        <div class="lamp l3"></div>
+        <div class="lamp l4"></div>
+        <div class="checker"></div>
+        <div class="booth"></div>
+        <div class="neon-wrap" id="neon"></div>
+        <div class="bottles" id="bottles"></div>
+        <div class="counter-top"></div>
+        <div class="counter-front"></div>
+      </div>
+
+      <header class="hud">
+        <div class="logo"><span>SLUMDUNK</span><span>TYCOON</span></div>
+        <div class="hud-sep"></div>
+        <div class="stage-name"><b>STAGE 01</b> JUST CHEESE</div>
+        <div class="hud-sep"></div>
+        <div class="money">
+          <strong id="sales">₩0</strong><span class="slash">/</span><span id="target">₩350,000</span>
+        </div>
+        <div class="progress"><div id="salesbar"></div></div>
+        <div class="timer" id="timerBox"><i id="timerIcon"></i><span id="time">05:00</span></div>
+        <button class="round-btn" id="soundBtn" aria-label="소리 켜기/끄기"></button>
+        <button class="round-btn" id="pauseBtn" aria-label="일시정지"><span class="pause-icon"></span></button>
+      </header>
+
+      <section class="customers" id="customers"></section>
+
+      <section class="panels">
+        <div class="panel grill-panel">
+          <div class="panel-head">
+            <i id="flameIcon"></i><span>그릴</span>
+            <span class="pill" id="stockPill">보관 0/2</span>
+          </div>
+          <div class="grill" id="grill" role="button" aria-label="그릴: 탭해서 굽기 / 꺼내기">
+            <div class="grate"></div>
+            <div class="embers"></div>
+            <img class="patty" id="patty" src="assets/beef_raw.webp" alt="" />
+            <div class="smoke" id="smoke"><span></span><span></span><span></span></div>
+            <div class="grill-hint" id="grillHint">TAP!</div>
+            <div class="grade" id="grade"></div>
+            <div class="gauge" id="gauge">
+              <span class="z-raw"></span><span class="z-perfect"></span><span class="z-good"></span><span class="z-burnt"></span>
+              <div class="needle" id="needle"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel assembly-panel">
+          <div class="panel-head">
+            <i id="stackIcon"></i><span>조립대</span>
+            <span class="pill step" id="step">0 / 7</span>
+          </div>
+          <div class="board" id="board">
+            <div class="recipe" id="recipe" aria-label="레시피"></div>
+            <div class="plate"></div>
+            <div class="stack" id="stack"></div>
+            <div class="sparkle" id="sparkle"></div>
+          </div>
+        </div>
+
+        <div class="panel tray-panel">
+          <div class="panel-head"><i id="trayIcon"></i><span>재료</span></div>
+          <div class="tray" id="tray"></div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast"></div>
+      <div class="fx" id="fx"></div>
+
+      <div class="overlay show" id="startScreen">
+        <div class="card">
+          <div class="logo big"><span>SLUMDUNK</span><span>TYCOON</span></div>
+          <div class="card-sub">STAGE 01 · JUST CHEESE</div>
+          <ol class="howto">
+            <li><b>그릴</b>을 탭해 패티를 굽고, <b class="c-perfect">초록 PERFECT</b>에서 한 번 더 탭!</li>
+            <li><b>빛나는 재료</b>를 순서대로 탭하면 버거가 쌓여요.</li>
+            <li>마지막 재료를 넣으면 <b>자동으로 서빙</b>! 빨리 내면 <b class="c-gold">팁</b>까지.</li>
+          </ol>
+          <div class="card-goal">5분 동안 목표 매출 <b id="goalText">₩350,000</b></div>
+          <button class="big-btn" id="startBtn">영업 시작!</button>
+          <div class="build-tag">V0.3 · 일부 그래픽·사운드는 임시 버전입니다</div>
+        </div>
+      </div>
+
+      <div class="overlay" id="pauseScreen">
+        <div class="card small">
+          <h2>일시정지</h2>
+          <button class="big-btn" id="resumeBtn">계속하기</button>
+          <button class="ghost-btn" id="restartBtn">처음부터 다시</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="resultScreen">
+        <div class="card">
+          <div class="result-title" id="resultTitle">STAGE CLEAR!</div>
+          <div class="result-desc" id="resultDesc"></div>
+          <div class="result-money" id="resultMoney">₩0</div>
+          <div class="result-stats" id="resultStats"></div>
+          <button class="big-btn" id="againBtn">다시 하기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rotate" id="rotate">
+      <div class="phone"></div>
+      <p>화면을 <b>가로로</b> 돌려주세요</p>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
