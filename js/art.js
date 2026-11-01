@@ -1,3 +1,5 @@
+import { CUSTOMERS } from './customers.js';
+
 // TEMPORARY ART: SVG stand-ins drawn in the glossy toy style of the Art Direction V1.0.
 // Replace with final rendered assets (see docs/v0.3-assets.md) without changing game code:
 // every function returns markup for one slot of the UI.
@@ -5,20 +7,9 @@
 // Shared gradients. Inserted once into the page by main.js.
 export const DEFS = `
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <radialGradient id="g-skin" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe2c8"/><stop offset=".7" stop-color="#f7c39b"/><stop offset="1" stop-color="#e7a37a"/></radialGradient>
   <radialGradient id="g-shine" cx="35%" cy="25%" r="60%"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <radialGradient id="g-red" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ff6b5e"/><stop offset=".6" stop-color="#d92d2f"/><stop offset="1" stop-color="#9c1a20"/></radialGradient>
-  <radialGradient id="g-navy" cx="40%" cy="20%" r="85%"><stop offset="0" stop-color="#4f6fb0"/><stop offset="1" stop-color="#22325e"/></radialGradient>
-  <radialGradient id="g-teal" cx="40%" cy="20%" r="85%"><stop offset="0" stop-color="#5fc7b7"/><stop offset="1" stop-color="#227a74"/></radialGradient>
   <radialGradient id="g-mustard" cx="40%" cy="20%" r="85%"><stop offset="0" stop-color="#ffd877"/><stop offset="1" stop-color="#d9962b"/></radialGradient>
-  <radialGradient id="g-plum" cx="40%" cy="20%" r="85%"><stop offset="0" stop-color="#b47ad6"/><stop offset="1" stop-color="#5d2f86"/></radialGradient>
-  <radialGradient id="g-mint" cx="40%" cy="25%" r="80%"><stop offset="0" stop-color="#b6ebcf"/><stop offset="1" stop-color="#4f9a77"/></radialGradient>
-  <linearGradient id="g-hair-brown" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5634"/><stop offset="1" stop-color="#4e2c19"/></linearGradient>
-  <linearGradient id="g-hair-blonde" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a1"/><stop offset="1" stop-color="#e2ad4f"/></linearGradient>
-  <linearGradient id="g-hair-black" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4350"/><stop offset="1" stop-color="#1e1a22"/></linearGradient>
-  <linearGradient id="g-hair-auburn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8743c"/><stop offset="1" stop-color="#8f3a1b"/></linearGradient>
-  <radialGradient id="g-iris" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#6aa7e0"/><stop offset="1" stop-color="#1f3f73"/></radialGradient>
-  <radialGradient id="g-iris-brown" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#9a6a45"/><stop offset="1" stop-color="#3b2214"/></radialGradient>
   <linearGradient id="g-bun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb45a"/><stop offset=".55" stop-color="#e98a2c"/><stop offset="1" stop-color="#c3651c"/></linearGradient>
   <linearGradient id="g-bun-base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6c47c"/><stop offset="1" stop-color="#d98a3a"/></linearGradient>
   <linearGradient id="g-patty" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b4a2b"/><stop offset="1" stop-color="#4a2314"/></linearGradient>
@@ -31,92 +22,11 @@ export const DEFS = `
   <linearGradient id="g-steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2f2f2"/><stop offset="1" stop-color="#a9a9ad"/></linearGradient>
 </defs></svg>`;
 
-// --- Customers ---------------------------------------------------------------------------
-// One SVG holds every expression; the wrapper's mood-* class shows the matching parts.
-
-const OUTFITS = [
-  { shirt: 'g-navy', hair: 'g-hair-brown', iris: 'g-iris-brown' }, // red "S" cap
-  { shirt: 'g-teal', hair: 'g-hair-blonde', iris: 'g-iris' }, // red ribbon
-  { shirt: 'g-mustard', hair: 'g-hair-black', iris: 'g-iris-brown' }, // mint beanie + glasses
-  { shirt: 'g-plum', hair: 'g-hair-auburn', iris: 'g-iris' }, // curly bob + freckles
-];
-
-function hairBack(v) {
-  const f = `url(#${OUTFITS[v].hair})`;
-  if (v === 1) return `<path d="M38 96 C30 150 44 186 60 190 L140 190 C156 186 170 150 162 96 Z" fill="${f}"/>
-    <circle cx="44" cy="160" r="16" fill="${f}"/><circle cx="156" cy="160" r="16" fill="${f}"/>`;
-  if (v === 3) return `<g fill="${f}">${[36, 52, 148, 164].map((x, i) => `<circle cx="${x}" cy="${120 + (i % 2) * 18}" r="18"/>`).join('')}</g>`;
-  return '';
-}
-
-function hairFront(v) {
-  const f = `url(#${OUTFITS[v].hair})`;
-  switch (v) {
-    case 0: // brown tufts under a red cap with an S
-      return `<path d="M44 84 Q50 112 66 100 Q72 116 86 104 Q98 118 112 104 Q126 116 134 100 Q150 112 156 84 Z" fill="${f}"/>
-        <path d="M40 80 C40 30 160 30 160 80 Z" fill="url(#g-red)"/>
-        <path d="M40 80 Q100 70 160 80 L176 88 Q100 78 34 90 Z" fill="#a51e24"/>
-        <ellipse cx="88" cy="48" rx="26" ry="10" fill="url(#g-shine)"/>
-        <circle cx="100" cy="58" r="15" fill="#fff"/>
-        <text x="100" y="65" text-anchor="middle" font-size="22" font-weight="900" fill="#d92d2f" font-family="Arial Black,Arial">S</text>`;
-    case 1: // blonde fringe and a big red bow
-      return `<path d="M38 96 C34 40 166 40 162 96 Q150 70 128 74 Q110 60 96 76 Q80 62 60 78 Q46 76 38 96 Z" fill="${f}"/>
-        <g transform="translate(100 36)"><path d="M0 0 L-42 -22 Q-50 0 -42 22 Z" fill="url(#g-red)"/><path d="M0 0 L42 -22 Q50 0 42 22 Z" fill="url(#g-red)"/>
-        <circle r="11" fill="#b8202a"/><ellipse cx="-30" cy="-6" rx="8" ry="4" fill="url(#g-shine)"/></g>`;
-    case 2: // black hair and a mint beanie
-      return `<path d="M42 96 Q48 70 70 74 Q100 64 130 74 Q152 70 158 96 Z" fill="${f}"/>
-        <path d="M42 82 C42 22 158 22 158 82 Z" fill="url(#g-mint)"/>
-        <rect x="38" y="72" width="124" height="18" rx="9" fill="#3f8a67"/>
-        <circle cx="100" cy="24" r="12" fill="#e8fff2"/>
-        <ellipse cx="80" cy="46" rx="20" ry="8" fill="url(#g-shine)"/>`;
-    default: // auburn curls
-      return `<g fill="${f}">${[[56, 66, 22], [80, 52, 24], [108, 48, 25], [136, 58, 22], [152, 80, 17], [46, 86, 17]]
-        .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
-        <ellipse cx="92" cy="46" rx="18" ry="7" fill="url(#g-shine)"/>`;
-  }
-}
-
-function face(v) {
-  const iris = `url(#${OUTFITS[v].iris})`;
-  const eye = (x) => `<ellipse cx="${x}" cy="112" rx="11" ry="13" fill="#fff"/>
-    <ellipse cx="${x}" cy="114" rx="8.5" ry="10" fill="${iris}"/><circle cx="${x}" cy="115" r="4" fill="#111"/>
-    <circle cx="${x - 3}" cy="109" r="3.2" fill="#fff"/><circle cx="${x + 3}" cy="118" r="1.4" fill="#fff"/>`;
-  const glasses = v === 2
-    ? `<g fill="none" stroke="#272326" stroke-width="3.5"><circle cx="80" cy="113" r="16"/><circle cx="120" cy="113" r="16"/><path d="M96 112 H104"/></g>`
-    : '';
-  const freckles = v === 3 ? `<g fill="#c9784c" opacity=".6"><circle cx="66" cy="130" r="1.6"/><circle cx="72" cy="134" r="1.6"/><circle cx="128" cy="130" r="1.6"/><circle cx="134" cy="134" r="1.6"/></g>` : '';
-  return `
-    <g class="e-open">${eye(80)}${eye(120)}</g>
-    <g class="e-closed" fill="none" stroke="#3a2418" stroke-width="4" stroke-linecap="round">
-      <path d="M69 114 Q80 102 91 114"/><path d="M109 114 Q120 102 131 114"/></g>
-    <g class="e-lid"><path d="M68 106 Q80 100 92 106 L92 110 L68 110 Z" fill="url(#g-skin)"/><path d="M108 106 Q120 100 132 106 L132 110 L108 110 Z" fill="url(#g-skin)"/></g>
-    <g class="e-brow-angry" stroke="#3a2418" stroke-width="4" stroke-linecap="round"><path d="M68 96 L90 102"/><path d="M132 96 L110 102"/></g>
-    <g class="e-brow-worry" stroke="#3a2418" stroke-width="3.5" stroke-linecap="round"><path d="M70 100 L90 95"/><path d="M130 100 L110 95"/></g>
-    ${glasses}
-    <ellipse cx="64" cy="132" rx="10" ry="6" fill="#ff8f8f" opacity=".55" class="blush"/>
-    <ellipse cx="136" cy="132" rx="10" ry="6" fill="#ff8f8f" opacity=".55" class="blush"/>
-    ${freckles}
-    <path class="m-smile" d="M88 134 Q100 146 112 134" fill="none" stroke="#7a2a1e" stroke-width="4" stroke-linecap="round"/>
-    <path class="m-flat" d="M90 138 H110" stroke="#7a2a1e" stroke-width="4" stroke-linecap="round"/>
-    <path class="m-frown" d="M88 142 Q100 132 112 142" fill="none" stroke="#7a2a1e" stroke-width="4" stroke-linecap="round"/>
-    <g class="m-laugh"><path d="M84 130 Q100 158 116 130 Z" fill="#7a2a1e"/><path d="M92 144 Q100 150 108 144 Q100 140 92 144 Z" fill="#ff7d7d"/></g>
-    <path class="sweat" d="M146 92 Q154 104 148 110 Q140 108 146 92 Z" fill="#8fd3ff" stroke="#4aa3d8" stroke-width="1.5"/>`;
-}
-
-export function customerSVG(v) {
-  const shirt = `url(#${OUTFITS[v].shirt})`;
-  return `<svg viewBox="0 0 200 210" class="cust-svg">
-    ${hairBack(v)}
-    <path d="M40 210 C40 168 64 154 100 154 C136 154 160 168 160 210 Z" fill="${shirt}"/>
-    <ellipse cx="82" cy="170" rx="22" ry="7" fill="url(#g-shine)" opacity=".6"/>
-    ${v === 0 ? '<path d="M82 156 L100 180 L118 156" fill="none" stroke="#e9e9f2" stroke-width="6"/>' : ''}
-    ${v === 1 ? '<path d="M80 156 Q100 172 120 156" fill="none" stroke="#e9fff9" stroke-width="5"/>' : ''}
-    <ellipse cx="40" cy="116" rx="11" ry="14" fill="url(#g-skin)"/><ellipse cx="160" cy="116" rx="11" ry="14" fill="url(#g-skin)"/>
-    <ellipse cx="100" cy="110" rx="62" ry="58" fill="url(#g-skin)"/>
-    <ellipse cx="80" cy="82" rx="28" ry="14" fill="url(#g-shine)" opacity=".5"/>
-    ${face(v)}
-    ${hairFront(v)}
-  </svg>`;
+// --- Customers: selected image assets only (no legacy SVG customers) ---
+export function customerPortrait(v) {
+  const customer = CUSTOMERS[v];
+  if (!customer) throw new RangeError(`Unknown customer variant: ${v}`);
+  return `<div class="cust-art" style="--portrait-zoom:${customer.zoom}"><img class="cust-portrait" src="${customer.src}" alt="${customer.name}" data-customer="${customer.id}" decoding="async" draggable="false" /></div>`;
 }
 
 // --- Food ----------------------------------------------------------------------------------

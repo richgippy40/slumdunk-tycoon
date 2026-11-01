@@ -228,6 +228,10 @@ async function dualGrill(browser) {
   // Stop automatic clock advancement during touch actions; only runFor moves it.
   await page.clock.pauseAt(await page.evaluate(() => new Date(Date.now() + 1000).toISOString()));
   await tapEl(page, d, '#startBtn');
+  // Settle the optional fullscreen transition and decode the first portrait
+  // before measuring cooking time; neither belongs to the gauge assertion.
+  await page.clock.runFor(1500);
+  await page.locator('.cust-portrait').evaluate(img => img.decode());
   await tapEl(page, d, '#grill');
   await page.clock.runFor(1500);
   await tapEl(page, d, '#grill2');
@@ -257,8 +261,48 @@ async function dualGrill(browser) {
   await ctx.close();
 }
 
+async function customerCast(browser) {
+  for (const d of [DEVICES[0], DEVICES[5]]) {
+    const { ctx, page, errors } = await open(browser, d);
+    await tapEl(page, d, '#startBtn');
+    await tapEl(page, d, '#pauseBtn');
+    // Fixture the selected portraits while paused to inspect every asset,
+    // including characters not randomly drawn during the gameplay checks.
+    await page.evaluate(() => document.getElementById('pauseScreen').classList.remove('show'));
+    for (const offset of [0, 4]) {
+      const result = await page.evaluate(async offset => {
+        const { CUSTOMERS } = await import('./js/customers.js');
+        const { customerPortrait } = await import('./js/art.js');
+        const selected = CUSTOMERS.slice(offset, offset + 4);
+        const seats = [...document.querySelectorAll('.seat')];
+        seats.forEach((seat, i) => {
+          seat.className = 'seat';
+          seat.innerHTML = selected[i]
+            ? `<div class="cust mood-normal" style="animation:none">${customerPortrait(offset + i)}</div>`
+            : '';
+        });
+        await Promise.all([...document.querySelectorAll('.cust-portrait')].map(img => img.decode()));
+        const loaded = [...document.querySelectorAll('.cust-portrait')].every((img, i) => img.naturalWidth > 0 && img.dataset.customer === selected[i].id);
+        const contained = [...document.querySelectorAll('.cust-art')].every(el => {
+          const r = el.getBoundingClientRect();
+          return r.left >= 0 && r.top >= document.querySelector('.hud').getBoundingClientRect().bottom && r.right <= innerWidth && r.bottom <= innerHeight;
+        });
+        const legacy = !!document.querySelector('.cust-svg');
+        return { loaded, contained, legacy, count: selected.length };
+      }, offset);
+      check(d.name, `selected customer portraits ${offset + 1}-${offset + result.count} load`, result.loaded);
+      check(d.name, 'portraits stay below HUD and inside screen', result.contained);
+      check(d.name, 'no legacy customer SVGs', !result.legacy);
+      if (SHOTS) await page.screenshot({ path: `${SHOTS}/cast-${d.width}-${offset}.png` });
+    }
+    check(d.name, 'customer assets have no failed requests', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+}
+
 const browser = await chromium.launch({ channel: 'chrome' });
 for (const d of DEVICES) await quick(browser, d);
+await customerCast(browser);
 await dualGrill(browser);
 await fullGame(browser, DEVICES[0]);
 await browser.close();

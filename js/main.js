@@ -464,7 +464,7 @@ function render() {
         s.el.innerHTML = `<div class="lock">${art.lockSVG}</div>`;
       } else if (c) {
         s.el.className = 'seat';
-        s.el.innerHTML = `<div class="cust mood-normal">${art.customerSVG(c.variant)}</div>
+        s.el.innerHTML = `<div class="cust mood-normal">${art.customerPortrait(c.variant)}</div>
           <div class="bubble">${art.burgerIcon}</div><div class="patience"><div></div></div>`;
         s.mood = 'normal';
       } else {

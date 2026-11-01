@@ -382,10 +382,18 @@ img {
   margin-left: -135px;
   animation: enter 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
-.cust .cust-svg {
+.cust-art {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 8px 10px #0006);
+  overflow: hidden;
+}
+.cust-portrait {
+  display: block;
+  width: calc(100% * var(--portrait-zoom, 1));
+  max-width: none;
+  height: auto;
+  margin-left: calc((1 - var(--portrait-zoom, 1)) * 50%);
+  pointer-events: none;
 }
 .cust.leave {
   animation: leave 0.6s ease-in forwards;
@@ -396,31 +404,15 @@ img {
 @keyframes leave {
   to { transform: translateY(160px); opacity: 0; }
 }
-.mood-happy .cust-svg { animation: hop 0.5s ease-out 2; }
+.mood-happy .cust-art { animation: hop 0.5s ease-out 2; }
 @keyframes hop {
   40% { transform: translateY(-16px) scale(1.04); }
 }
-.mood-angry .cust-svg { animation: shake 0.4s 2; }
+.mood-angry .cust-art { animation: shake 0.4s 2; }
 
-/* expressions */
-.cust .e-closed, .cust .e-lid, .cust .e-brow-angry, .cust .e-brow-worry,
-.cust .m-flat, .cust .m-frown, .cust .m-laugh, .cust .sweat { display: none; }
-.mood-waiting .m-smile { display: none; }
-.mood-waiting .m-flat,
-.mood-waiting .e-brow-worry { display: inline; }
-.mood-impatient .m-smile { display: none; }
-.mood-impatient .m-frown,
-.mood-impatient .e-lid,
-.mood-impatient .e-brow-angry,
-.mood-impatient .sweat { display: inline; }
-.mood-happy .e-open,
-.mood-happy .m-smile { display: none; }
-.mood-happy .e-closed,
-.mood-happy .m-laugh { display: inline; }
-.mood-happy .blush { opacity: 0.9; }
-.mood-angry .m-smile { display: none; }
-.mood-angry .m-frown,
-.mood-angry .e-brow-angry { display: inline; }
+/* Image characters keep their original faces; mood is shown by motion,
+   the existing patience gauge, and the happy/angry order bubble. */
+.mood-impatient .cust-art { transform: translateY(3px); }
 
 .bubble {
   position: absolute;

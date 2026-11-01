@@ -10,8 +10,9 @@ Mobile landscape (16:9) burger-diner casual game. Static site: no build step.
 - `css/game.css` — styles (Art Direction V1.0 colors as CSS variables)
 - `js/logic.js` — game rules (pure, no DOM): customers, grill grades, assembly, auto-serve, tips
 - `js/main.js` — screen scaling, touch input, rendering, effects
-- `js/art.js` — temporary SVG art; `js/audio.js` — temporary synthesized sounds
-- `assets/` — original SLUMDUNK images (unchanged)
+- `js/customers.js` — selected seven-character cast and portrait framing
+- `js/art.js` — customer portrait markup and temporary SVG props; `js/audio.js` — synthesized sounds
+- `assets/` — SLUMDUNK food images; `assets/customers/` — selected customer PNGs
 - `docs/` — V0.3 plan and asset status
 
 ## Render
@@ -27,6 +28,9 @@ Static Site, branch `main`, build command `echo ok`, publish directory `.`.
   toolbar/safe-area tests, not a substitute for real iPhone Safari or KakaoTalk testing.
 
 ## Current development changes
+- Seven selected customer portraits replace the old four SVG customers entirely.
+  Only the upper body is framed above the counter; mood uses movement, order bubbles
+  and patience gauges while preserving each character's original face.
 - Two independently tappable grills, each with its own cooking gauge and grade.
 - Patty storage increased to 4. Cooking patties and a patty in the assembly stack
   reserve storage room so cooking and undo cannot overflow storage.

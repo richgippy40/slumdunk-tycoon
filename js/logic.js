@@ -1,6 +1,8 @@
 // SLUMDUNK TYCOON game rules. Pure state + functions: no DOM, no real clock.
 // The UI calls update(g, dt) every frame and the tap functions on input, then drains g.events.
 
+import { CUSTOMERS } from './customers.js';
+
 export const STAGE1 = {
   duration: 300, // seconds
   target: 350000,
@@ -21,7 +23,7 @@ export const STAGE1 = {
   patience: [45, 36], // seconds a customer waits, start -> end of stage
   refillGap: 1, // minimum seconds before a freed seat is filled again
   reactionTime: 1.2, // seconds a happy/angry customer stays before leaving
-  variants: 4,
+  variants: CUSTOMERS.length,
 };
 
 export const LABELS = {

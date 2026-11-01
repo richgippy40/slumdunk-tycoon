@@ -5,6 +5,7 @@ import {
   STAGE1, createGame, update, tapGrill, tapIngredient, undo, cookProgress, nextIngredient,
   customerMood, pattyCapacityUsed,
 } from '../js/logic.js';
+import { CUSTOMERS } from '../js/customers.js';
 
 const step = (g, seconds, dt = 0.05) => {
   for (let s = 0; s < seconds - 1e-9; s += dt) update(g, dt);
@@ -17,6 +18,23 @@ const cookTo = (g, p) => {
   return g.events.filter((e) => e.type === 'cooked').pop();
 };
 const build = (g, keys) => keys.forEach((k) => tapIngredient(g, k));
+
+test('only the seven selected customers spawn, with no consecutive duplicate', () => {
+  const g = createGame(STAGE1, 1);
+  const variants = [];
+  for (let t = 0; t < 300; t += 0.05) {
+    update(g, 0.05);
+    for (const event of g.events.splice(0)) {
+      if (event.type === 'arrive') variants.push(g.slots[event.slot].variant);
+    }
+  }
+  assert.equal(CUSTOMERS.length, 7);
+  assert.equal(new Set(variants).size, 7, 'all seven selected characters can appear');
+  variants.forEach((v, i) => {
+    assert.ok(CUSTOMERS[v], 'spawn must resolve to a selected asset');
+    if (i) assert.notEqual(v, variants[i - 1]);
+  });
+});
 
 test('first customer arrives in seat 1 at start; other seats locked', () => {
   const g = createGame(STAGE1, 1);
