@@ -22,10 +22,26 @@ $('goalText').textContent = won(cfg.target);
 
 // ---------- Screen fit: stage 1280–1600 × 720, scaled to the viewport ----------
 const stage = $('stage');
+// Read CSS env() insets without changing the document's layout or hit testing.
+const safeArea = document.createElement('div');
+safeArea.id = 'viewport-safe-area';
+safeArea.setAttribute('aria-hidden', 'true');
+document.body.append(safeArea);
 let scale = 1;
 function fit() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const viewport = window.visualViewport;
+  const insets = getComputedStyle(safeArea);
+  const top = parseFloat(insets.paddingTop) || 0;
+  const right = parseFloat(insets.paddingRight) || 0;
+  const bottom = parseFloat(insets.paddingBottom) || 0;
+  const left = parseFloat(insets.paddingLeft) || 0;
+  const vw = (viewport?.width ?? window.innerWidth) - left - right;
+  const vh = (viewport?.height ?? window.innerHeight) - top - bottom;
+  if (vw <= 0 || vh <= 0) return; // Rotation can briefly report an empty viewport.
+  // The absolute stage uses document coordinates; visualViewport offsets are
+  // relative to the layout viewport and can change without a window resize.
+  const x = window.scrollX + (viewport?.offsetLeft || 0) + left;
+  const y = window.scrollY + (viewport?.offsetTop || 0) + top;
   scale = vh / 720;
   let w = vw / scale;
   if (w < 1280) {
@@ -34,11 +50,14 @@ function fit() {
   }
   w = Math.min(w, 1600);
   stage.style.width = w + 'px';
-  stage.style.transform = `translate(${(vw - w * scale) / 2}px, ${(vh - 720 * scale) / 2}px) scale(${scale})`;
+  stage.style.transform = `translate(${x + (vw - w * scale) / 2}px, ${y + (vh - 720 * scale) / 2}px) scale(${scale})`;
   document.body.classList.toggle('portrait', vh > vw);
 }
 window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', fit);
+window.addEventListener('pageshow', fit);
 window.visualViewport?.addEventListener('resize', fit);
+window.visualViewport?.addEventListener('scroll', fit);
 fit();
 
 // Position of an element's center in stage coordinates.
