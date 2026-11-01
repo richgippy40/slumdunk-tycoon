@@ -15,10 +15,10 @@ export const STAGE1 = {
     { within: 10, amount: 1500 },
     { within: 18, amount: 700 },
   ],
-  pattyStockMax: 2,
+  pattyStockMax: 4,
   slotUnlocks: [0, 50, 130, 210], // second at which each customer seat opens
-  spawnDelay: [5, 2], // seconds between arrivals, start -> end of stage
-  patience: [45, 30], // seconds a customer waits, start -> end of stage
+  spawnDelay: [5, 3], // seconds between arrivals, start -> end of stage
+  patience: [45, 36], // seconds a customer waits, start -> end of stage
   refillGap: 1, // minimum seconds before a freed seat is filled again
   reactionTime: 1.2, // seconds a happy/angry customer stays before leaving
   variants: 4,
@@ -48,6 +48,7 @@ function mulberry32(seed) {
 const lerp = (range, k) => range[0] + (range[1] - range[0]) * Math.min(1, Math.max(0, k));
 
 export function createGame(cfg = STAGE1, seed = Date.now()) {
+  const grills = Array.from({ length: 2 }, () => ({ cooking: false, start: 0 }));
   return {
     cfg,
     rng: mulberry32(seed),
@@ -60,7 +61,8 @@ export function createGame(cfg = STAGE1, seed = Date.now()) {
     served: 0,
     lost: 0,
     grades: { PERFECT: 0, GOOD: 0, MISS: 0 },
-    grill: { cooking: false, start: 0 },
+    grills,
+    grill: grills[0], // Default lane for keyboard controls and existing callers.
     stock: [], // grades of cooked patties waiting to be used
     stack: [], // { key, ok, grade? }
     plated: false, // finished burger waiting for a customer
@@ -75,8 +77,9 @@ export function createGame(cfg = STAGE1, seed = Date.now()) {
 
 const emit = (g, type, data = {}) => g.events.push({ type, t: g.t, ...data });
 
-export function cookProgress(g) {
-  return g.grill.cooking ? Math.min(1, (g.t - g.grill.start) / g.cfg.cookTime) : 0;
+export function cookProgress(g, lane = 0) {
+  const grill = g.grills[lane];
+  return grill?.cooking ? Math.min(1, (g.t - grill.start) / g.cfg.cookTime) : 0;
 }
 
 export function gradeOf(p, z) {
@@ -102,23 +105,29 @@ export function patienceLeft(g, c) {
   return Math.max(0, 1 - (g.t - c.arrive) / c.patience);
 }
 
-export function tapGrill(g) {
-  if (g.ended) return;
-  if (!g.grill.cooking) {
-    if (g.stock.length >= g.cfg.pattyStockMax) return emit(g, 'grillFull');
-    g.grill.cooking = true;
-    g.grill.start = g.t;
-    return emit(g, 'cookStart');
-  }
-  finishCook(g, cookProgress(g), false);
+// Reserve room for cooking patties and a patty that can still be undone.
+export function pattyCapacityUsed(g) {
+  return g.stock.length + g.grills.filter(x => x.cooking).length + g.stack.filter(x => x.key === 'meat').length;
 }
 
-function finishCook(g, p, auto) {
-  g.grill.cooking = false;
+export function tapGrill(g, lane = 0) {
+  const grill = g.grills[lane];
+  if (g.ended || !grill) return;
+  if (!grill.cooking) {
+    if (pattyCapacityUsed(g) >= g.cfg.pattyStockMax) return emit(g, 'grillFull', { lane });
+    grill.cooking = true;
+    grill.start = g.t;
+    return emit(g, 'cookStart', { lane });
+  }
+  finishCook(g, lane, cookProgress(g, lane), false);
+}
+
+function finishCook(g, lane, p, auto) {
+  g.grills[lane].cooking = false;
   const r = gradeOf(p, g.cfg.zones);
   g.grades[r.grade]++;
   if (r.grade !== 'MISS') g.stock.push(r.grade);
-  emit(g, 'cooked', { ...r, p, auto });
+  emit(g, 'cooked', { ...r, lane, p, auto });
 }
 
 export function tapIngredient(g, key) {
@@ -190,7 +199,9 @@ export function update(g, dt) {
   const unlocked = cfg.slotUnlocks.filter((s) => s <= g.t).length;
   while (g.unlocked < unlocked) emit(g, 'slotUnlocked', { slot: g.unlocked++ });
 
-  if (g.grill.cooking && cookProgress(g) >= 1) finishCook(g, 1, true);
+  g.grills.forEach((grill, lane) => {
+    if (grill.cooking && cookProgress(g, lane) >= 1) finishCook(g, lane, 1, true);
+  });
 
   g.slots.forEach((c, i) => {
     if (!c) return;
@@ -215,7 +226,7 @@ export function update(g, dt) {
 
   if (g.t >= cfg.duration) {
     g.ended = true;
-    g.grill.cooking = false;
+    g.grills.forEach(grill => { grill.cooking = false; });
     g.result = {
       cleared: g.sales >= cfg.target,
       sales: g.sales,

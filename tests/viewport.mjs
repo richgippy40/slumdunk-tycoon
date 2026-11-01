@@ -40,8 +40,10 @@ try {
         Object.assign(visualViewport, { width: s.width, height: s.height, offsetLeft: s.offsetLeft, offsetTop: s.offsetTop });
         visualViewport.dispatchEvent(new Event(s.event || 'resize'));
         await new Promise(requestAnimationFrame);
+        // Sales grow during play; checking only the initial ₩0 misses HUD overflow.
+        document.querySelector('#sales').textContent = '₩999,999';
         const bounds = { left: s.offsetLeft + safe[3], top: s.offsetTop + safe[0], right: s.offsetLeft + s.width - safe[1], bottom: s.offsetTop + s.height - safe[2] };
-        const outside = ['#stage', '.hud', '#customers', '.grill-panel', '.assembly-panel', '.tray-panel', '#pauseBtn', '#soundBtn', ...[...document.querySelectorAll('.tile')].map((_, i) => `.tile:nth-child(${i + 1})`)].filter(sel => {
+        const outside = ['#stage', '.hud', '#sales', '#target', '#time', '#customers', '.grill-panel', '#grill', '#grill2', '.assembly-panel', '.tray-panel', '#pauseBtn', '#soundBtn', ...[...document.querySelectorAll('.tile')].map((_, i) => `.tile:nth-child(${i + 1})`)].filter(sel => {
           const r = document.querySelector(sel).getBoundingClientRect();
           return r.left < bounds.left - 1 || r.top < bounds.top - 1 || r.right > bounds.right + 1 || r.bottom > bounds.bottom + 1;
         });

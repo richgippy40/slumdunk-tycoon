@@ -1,7 +1,7 @@
 // SLUMDUNK TYCOON — screen, input, effects. Game rules live in logic.js.
 import {
   STAGE1, LABELS, createGame, update, tapGrill, tapIngredient, undo, cookProgress,
-  nextIngredient, customerMood, patienceLeft,
+  nextIngredient, customerMood, patienceLeft, pattyCapacityUsed,
 } from './logic.js';
 import * as art from './art.js';
 import * as sfx from './audio.js';
@@ -101,11 +101,34 @@ const recipeIcons = cfg.recipe.map((key) => {
   return i;
 });
 
+const firstGrill = $('grill');
+const grillRow = document.createElement('div');
+grillRow.className = 'grill-row';
+firstGrill.before(grillRow);
+grillRow.append(firstGrill);
+const secondGrill = firstGrill.cloneNode(true);
+secondGrill.id = 'grill2';
+secondGrill.querySelectorAll('[id]').forEach(el => { el.id += '2'; });
+grillRow.append(secondGrill);
+const grillElements = [firstGrill, secondGrill];
 const z = cfg.zones;
-$('gauge').querySelector('.z-raw').style.width = z.raw * 100 + '%';
-$('gauge').querySelector('.z-perfect').style.width = (z.perfect - z.raw) * 100 + '%';
-$('gauge').querySelector('.z-good').style.width = (z.good - z.perfect) * 100 + '%';
-$('gauge').querySelector('.z-burnt').style.width = (1 - z.good) * 100 + '%';
+grillElements.forEach((grill, lane) => {
+  grill.setAttribute('aria-label', `그릴 ${lane + 1}: 탭해서 굽기 / 꺼내기`);
+  grill.tabIndex = 0;
+  const gauge = grill.querySelector('.gauge');
+  gauge.querySelector('.z-raw').style.width = z.raw * 100 + '%';
+  gauge.querySelector('.z-perfect').style.width = (z.perfect - z.raw) * 100 + '%';
+  gauge.querySelector('.z-good').style.width = (z.good - z.perfect) * 100 + '%';
+  gauge.querySelector('.z-burnt').style.width = (1 - z.good) * 100 + '%';
+  press(grill, () => act(() => tapGrill(game, lane)));
+  grill.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.repeat) act(() => tapGrill(game, lane));
+    }
+  });
+});
 
 // ---------- Input ----------
 function press(el, fn) {
@@ -129,7 +152,6 @@ function act(fn) {
   render();
 }
 
-press($('grill'), () => act(() => tapGrill(game)));
 press($('pauseBtn'), () => running && setPaused(true));
 press($('resumeBtn'), () => setPaused(false));
 press($('restartBtn'), () => start());
@@ -182,7 +204,7 @@ function setPaused(p) {
   paused = p;
   $('pauseScreen').classList.toggle('show', p);
   if (!p) last = performance.now();
-  sfx.setSizzle(!p && game && game.grill.cooking);
+  sfx.setSizzle(!p && game && game.grills.some(grill => grill.cooking));
 }
 
 // ---------- Game flow ----------
@@ -238,8 +260,8 @@ function handleEvents() {
         sfx.setSizzle(true);
         break;
       case 'cooked': {
-        sfx.setSizzle(false);
-        const g = $('grade');
+        sfx.setSizzle(game.grills.some(grill => grill.cooking));
+        const g = grillElements[e.lane].querySelector('.grade');
         g.className = 'grade ' + e.grade;
         g.textContent = e.grade === 'MISS' ? (e.reason === 'raw' ? 'MISS · 덜 익음' : 'MISS · 탔어요') : e.grade + '!';
         void g.offsetWidth;
@@ -249,8 +271,8 @@ function handleEvents() {
         break;
       }
       case 'grillFull':
-        toast(`패티 보관함이 가득 찼어요 (${cfg.pattyStockMax}/${cfg.pattyStockMax})`, true);
-        flash($('grill'), 'shake');
+        toast(`패티 공간이 부족해요 (굽기·조립 포함 ${cfg.pattyStockMax}개)`, true);
+        flash(grillElements[e.lane], 'shake');
         sfx.play('wrong');
         break;
       case 'needPatty':
@@ -412,17 +434,20 @@ function render() {
   }
 
   // Grill
-  const p = cookProgress(g);
-  const grill = $('grill');
-  const full = !g.grill.cooking && g.stock.length >= cfg.pattyStockMax;
-  grill.classList.toggle('cooking', g.grill.cooking);
-  grill.classList.toggle('full', full);
-  grill.classList.toggle('burnt-warn', g.grill.cooking && p >= z.good);
-  const img = !g.grill.cooking ? 'beef_raw' : p < 0.18 ? 'beef_raw' : p < z.raw ? 'beef_cooking' : p < z.good ? 'beef_ready' : 'beef_burnt';
-  const src = `assets/${img}.webp`;
-  if ($('patty').getAttribute('src') !== src) $('patty').setAttribute('src', src);
-  $('needle').style.left = p * 100 + '%';
-  $('grillHint').textContent = 'TAP!';
+  const full = pattyCapacityUsed(g) >= cfg.pattyStockMax;
+  grillElements.forEach((grill, lane) => {
+    const cooking = g.grills[lane].cooking;
+    const p = cookProgress(g, lane);
+    grill.classList.toggle('cooking', cooking);
+    grill.classList.toggle('full', !cooking && full);
+    grill.classList.toggle('burnt-warn', cooking && p >= z.good);
+    const img = !cooking ? 'beef_raw' : p < 0.18 ? 'beef_raw' : p < z.raw ? 'beef_cooking' : p < z.good ? 'beef_ready' : 'beef_burnt';
+    const patty = grill.querySelector('.patty');
+    const src = `assets/${img}.webp`;
+    if (patty.getAttribute('src') !== src) patty.setAttribute('src', src);
+    grill.querySelector('.needle').style.left = p * 100 + '%';
+    grill.querySelector('.grill-hint').textContent = `패티 ${lane + 1} · TAP!`;
+  });
   $('stockPill').textContent = `보관 ${g.stock.length}/${cfg.pattyStockMax}`;
   $('stockPill').classList.toggle('full', full);
 

@@ -22,3 +22,14 @@ Static Site, branch `main`, build command `echo ok`, publish directory `.`.
 - End to end (real Chrome, touch emulation, fake clock, full 5-minute game):
   `npm i --no-save playwright-core`, serve the folder (e.g. `python -m http.server 8000`),
   then `node tests/e2e.mjs http://127.0.0.1:8000/`
+- Viewport regression (same Playwright dependency): `node tests/viewport.mjs http://127.0.0.1:8000/`.
+  Uses `/usr/bin/chromium` by default; override with `CHROMIUM_PATH`. These are synthetic
+  toolbar/safe-area tests, not a substitute for real iPhone Safari or KakaoTalk testing.
+
+## Current development changes
+- Two independently tappable grills, each with its own cooking gauge and grade.
+- Patty storage increased to 4. Cooking patties and a patty in the assembly stack
+  reserve storage room so cooking and undo cannot overflow storage.
+- Late-stage arrival interval eased from 2 to 3 seconds; patience from 30 to 36 seconds.
+- HUD spacing reduced while preserving time and money font sizes; visual viewport
+  and safe-area fitting remain enabled. Stage duration, price, recipe and grade zones are unchanged.

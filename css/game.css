@@ -190,8 +190,8 @@ img {
   height: 82px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 18px 0 26px;
+  gap: 10px;
+  padding: 0 18px;
   background: linear-gradient(180deg, #3a3438 0, #272326 60%, #1f1b1e 100%);
   box-shadow: 0 6px 18px #0009;
   border-radius: 0 0 26px 26px;
@@ -202,7 +202,7 @@ img {
   flex-direction: column;
   line-height: 0.88;
   font-weight: 900;
-  font-size: 30px;
+  font-size: 26px;
   letter-spacing: -0.5px;
   font-family: 'Arial Black', 'Segoe UI Black', var(--font);
   transform: rotate(-3deg);
@@ -224,7 +224,7 @@ img {
   background: #ffffff38;
 }
 .stage-name {
-  font-size: 20px;
+  font-size: 16px;
   flex: none;
   font-weight: 900;
   white-space: nowrap;
@@ -241,7 +241,7 @@ img {
   font-variant-numeric: tabular-nums;
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 6px;
 }
 .money #target {
   font-size: 24px;
@@ -276,9 +276,9 @@ img {
 .timer {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   height: 58px;
-  padding: 0 18px;
+  padding: 0 12px;
   flex: none;
   border-radius: 29px;
   background: #1a171a;
@@ -534,6 +534,26 @@ img {
 }
 
 /* grill */
+.grill-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+.grill-row .grill {
+  min-width: 0;
+}
+.grill-row .patty {
+  width: 92%;
+}
+.grill-row .grill-hint {
+  white-space: nowrap;
+  font-size: 18px;
+  padding: 6px;
+}
+.grill-row .grade {
+  font-size: 26px;
+}
 .grill {
   position: relative;
   flex: 1;

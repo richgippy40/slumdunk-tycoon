@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   STAGE1, createGame, update, tapGrill, tapIngredient, undo, cookProgress, nextIngredient,
-  customerMood,
+  customerMood, pattyCapacityUsed,
 } from '../js/logic.js';
 
 const step = (g, seconds, dt = 0.05) => {
@@ -68,11 +68,70 @@ test('cook grades: raw MISS, PERFECT, GOOD, burnt MISS, auto-burn', () => {
 
 test('patty stock is capped', () => {
   const g = createGame(STAGE1, 1);
-  cookTo(g, 0.5);
-  cookTo(g, 0.5);
+  for (let i = 0; i < STAGE1.pattyStockMax; i++) cookTo(g, 0.5);
   tapGrill(g);
   assert.equal(g.grill.cooking, false);
   assert.equal(types(g).pop(), 'grillFull');
+});
+
+test('two grill lanes keep independent clocks and grades', () => {
+  const g = createGame(STAGE1, 1);
+  tapGrill(g, 0);
+  step(g, 1.5);
+  tapGrill(g, 1);
+  step(g, 1.5);
+  assert.ok(Math.abs(cookProgress(g, 0) - 0.5) < 0.001);
+  assert.ok(Math.abs(cookProgress(g, 1) - 0.25) < 0.001);
+  tapGrill(g, 0);
+  assert.deepEqual(g.stock, ['PERFECT']);
+  assert.equal(g.grills[1].cooking, true);
+  step(g, 2.7);
+  tapGrill(g, 1);
+  assert.deepEqual(g.stock, ['PERFECT', 'GOOD']);
+  assert.deepEqual(g.events.filter(e => e.type === 'cooked').map(e => e.lane), [0, 1]);
+});
+
+test('burning one lane leaves the other patty cooking', () => {
+  const g = createGame(STAGE1, 1);
+  tapGrill(g, 0);
+  step(g, 4);
+  tapGrill(g, 1);
+  step(g, 2.1);
+  assert.equal(g.grills[0].cooking, false);
+  assert.equal(g.grills[1].cooking, true);
+  assert.equal(g.grades.MISS, 1);
+  step(g, 0.9);
+  tapGrill(g, 1);
+  assert.deepEqual(g.stock, ['PERFECT']);
+});
+
+test('cooking reserves stock space, including a patty that can be undone', () => {
+  const g = createGame(STAGE1, 1);
+  for (let i = 0; i < 3; i++) cookTo(g, 0.5);
+  tapGrill(g, 0);
+  tapGrill(g, 1);
+  assert.equal(g.grills[1].cooking, false);
+  assert.equal(types(g).pop(), 'grillFull');
+  step(g, 3);
+  tapGrill(g, 0);
+  assert.equal(g.stock.length, 4);
+  build(g, ['bottom', 'sauce', 'pickle', 'meat']);
+  tapGrill(g, 1);
+  assert.equal(g.grills[1].cooking, false);
+  undo(g);
+  assert.equal(g.stock.length, 4);
+});
+
+test('stage end stops both grills and ignores both lane inputs', () => {
+  const g = createGame(STAGE1, 1);
+  step(g, 298);
+  tapGrill(g, 0);
+  tapGrill(g, 1);
+  step(g, 2);
+  assert.ok(g.grills.every(grill => !grill.cooking));
+  tapGrill(g, 0);
+  tapGrill(g, 1);
+  assert.ok(g.grills.every(grill => !grill.cooking));
 });
 
 test('meat needs a cooked patty; next ingredient follows the recipe', () => {
@@ -191,7 +250,7 @@ function playBot(reaction, seed) {
     const p = cookProgress(g);
     let acted = true;
     if (g.grill.cooking && p >= perfectAt) tapGrill(g);
-    else if (!g.grill.cooking && g.stock.length < STAGE1.pattyStockMax) tapGrill(g);
+    else if (!g.grill.cooking && pattyCapacityUsed(g) < STAGE1.pattyStockMax) tapGrill(g);
     else {
       const next = nextIngredient(g);
       if (next && (next !== 'meat' || g.stock.length) && g.slots.some((c) => c && c.status === 'waiting')) {

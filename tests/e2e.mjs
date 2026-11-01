@@ -49,10 +49,10 @@ async function layoutChecks(page, d) {
     const vh = innerHeight;
     const r = (sel) => document.querySelector(sel).getBoundingClientRect();
     const inside = (b) => b.left >= -1 && b.top >= -1 && b.right <= vw + 1 && b.bottom <= vh + 1;
-    const parts = ['.hud', '#customers', '.grill-panel', '.assembly-panel', '.tray-panel', '#pauseBtn'];
+    const parts = ['.hud', '#sales', '#target', '#time', '#customers', '.grill-panel', '.assembly-panel', '.tray-panel', '#pauseBtn'];
     const tiles = [...document.querySelectorAll('.tile')].map((t) => t.getBoundingClientRect());
     // every control must be the topmost element at its own center (not clipped or covered)
-    const hidden = ['#pauseBtn', '#soundBtn', '#grill', ...[...document.querySelectorAll('.tile')].map((t) => `.tile[aria-label="${t.getAttribute('aria-label')}"]`)]
+    const hidden = ['#pauseBtn', '#soundBtn', '#grill', '#grill2', ...[...document.querySelectorAll('.tile')].map((t) => `.tile[aria-label="${t.getAttribute('aria-label')}"]`)]
       .filter(() => !document.querySelector('.overlay.show'))
       .filter((sel) => {
         const el = document.querySelector(sel);
@@ -154,7 +154,7 @@ async function fullGame(browser, d) {
   await tapEl(page, d, '#grill');
   await page.clock.runFor(100);
   check(d.name, 'yellow press -> GOOD', (await text(page, '#grade')) === 'GOOD!');
-  check(d.name, 'patty stock 2/2', (await text(page, '#stockPill')) === '보관 2/2');
+  check(d.name, 'patty stock 2/4', (await text(page, '#stockPill')) === '보관 2/4');
 
   // Finish the burger -> auto serve
   for (const k of ['sauce', 'pickle', 'meat', 'cheese', 'onion', 'top']) {
@@ -222,8 +222,44 @@ async function quick(browser, d) {
   }
 }
 
+async function dualGrill(browser) {
+  const d = DEVICES[0];
+  const { ctx, page, errors } = await open(browser, d);
+  // Stop automatic clock advancement during touch actions; only runFor moves it.
+  await page.clock.pauseAt(await page.evaluate(() => new Date(Date.now() + 1000).toISOString()));
+  await tapEl(page, d, '#startBtn');
+  await tapEl(page, d, '#grill');
+  await page.clock.runFor(1500);
+  await tapEl(page, d, '#grill2');
+  await page.clock.runFor(1500);
+  const needles = await page.$$eval('.needle', els => els.map(el => parseFloat(el.style.left)));
+  check(d.name, 'two independent grill gauges', Math.abs(needles[0] - 50) < 2 && Math.abs(needles[1] - 25) < 2, needles.join(' / '));
+  await tapEl(page, d, '#pauseBtn');
+  const atPause = await page.$$eval('.needle', els => els.map(el => parseFloat(el.style.left)));
+  await page.clock.runFor(5000);
+  const paused = await page.$$eval('.needle', els => els.map(el => parseFloat(el.style.left)));
+  check(d.name, 'pause freezes both gauges', JSON.stringify(paused) === JSON.stringify(atPause));
+  await tapEl(page, d, '#resumeBtn');
+  await tapEl(page, d, '#grill');
+  check(d.name, 'first patty finished while second keeps cooking', await hasClass(page, '#grill2', 'cooking'));
+  await page.clock.runFor(1500);
+  await tapEl(page, d, '#grill2');
+  check(d.name, 'both patties stored with separate PERFECT grades', (await text(page, '#stockPill')) === '보관 2/4' && (await text(page, '#grade2')) === 'PERFECT!');
+  await tapEl(page, d, '#grill');
+  await tapEl(page, d, '#grill2');
+  await page.clock.runFor(3000);
+  await tapEl(page, d, '#grill');
+  await tapEl(page, d, '#grill2');
+  check(d.name, 'storage holds four patties', (await text(page, '#stockPill')) === '보관 4/4');
+  await tapEl(page, d, '#grill2');
+  check(d.name, 'full storage prevents another cook', !(await hasClass(page, '#grill2', 'cooking')));
+  check(d.name, 'dual grill has no JS errors / failed requests', !errors.length, errors.join(' | '));
+  await ctx.close();
+}
+
 const browser = await chromium.launch({ channel: 'chrome' });
 for (const d of DEVICES) await quick(browser, d);
+await dualGrill(browser);
 await fullGame(browser, DEVICES[0]);
 await browser.close();
 
