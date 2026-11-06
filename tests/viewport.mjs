@@ -1,9 +1,9 @@
 // Run with playwright-core installed: node tests/viewport.mjs [baseURL]
 // Synthetic visualViewport/safe-area regression; not a real iOS browser test.
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
+import { launch } from './pw.mjs';
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] });
+const browser = await launch();
 const failures = [];
 let checks = 0;
 try {

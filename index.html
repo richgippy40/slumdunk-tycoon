@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#272326" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>SLUMDUNK TYCOON — Stage 01</title>
+    <title>SLUMDUNK TYCOON</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E" />
     <link rel="stylesheet" href="css/game.css" />
   </head>
@@ -36,7 +36,7 @@
       <header class="hud">
         <div class="logo"><span>SLUMDUNK</span><span>TYCOON</span></div>
         <div class="hud-sep"></div>
-        <div class="stage-name"><b>STAGE 01</b> JUST CHEESE</div>
+        <div class="stage-name"><b id="stageNo">STAGE 01</b> <span id="stageName">JUST CHEESE</span></div>
         <div class="hud-sep"></div>
         <div class="money">
           <strong id="sales">₩0</strong><span class="slash">/</span><span id="target">₩350,000</span>
@@ -48,6 +48,25 @@
       </header>
 
       <section class="customers" id="customers"></section>
+
+      <!-- Stage 2+: one-tap side station on the counter (hidden in Stage 1) -->
+      <section class="station" id="station" aria-label="사이드">
+        <button class="side-btn fryer" id="fryer" aria-label="프라이어: 탭하면 감자튀김 3개">
+          <span class="side-art" id="fryerArt"></span>
+          <span class="side-ring"><i id="fryRing"></i></span>
+          <span class="side-count"><i id="friesIcon"></i><b id="friesCount">0</b></span>
+          <span class="side-hint">TAP!</span>
+        </button>
+        <button class="side-btn fountain" id="fountain" aria-label="음료 기계: 탭하면 한 잔">
+          <span class="side-art" id="fountainArt"></span>
+          <span class="cup-fill"><i id="cupFill"></i></span>
+          <span class="side-count"><i id="drinkIcon"></i><b id="drinkCount">0</b></span>
+          <span class="side-hint">TAP!</span>
+        </button>
+      </section>
+
+      <div class="combo-meter" id="comboMeter"><b id="comboNum">0</b><span>COMBO</span><div class="fever-bar"><i id="feverBar"></i></div></div>
+      <div class="banner" id="banner"></div>
 
       <section class="panels">
         <div class="panel grill-panel">
@@ -91,18 +110,30 @@
       <div class="toast" id="toast"></div>
       <div class="fx" id="fx"></div>
 
-      <div class="overlay show" id="startScreen">
+      <div class="overlay show" id="selectScreen">
+        <div class="select">
+          <div class="logo big"><span>SLUMDUNK</span><span>TYCOON</span></div>
+          <div class="stage-cards" id="stageCards"></div>
+          <div class="select-foot">
+            <span id="starTotal">★ 0 / 15</span>
+            <span>기록은 이 기기의 브라우저에만 저장돼요 (기기 변경·데이터 삭제 시 초기화)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="startScreen">
         <div class="card">
           <div class="logo big"><span>SLUMDUNK</span><span>TYCOON</span></div>
-          <div class="card-sub">STAGE 01 · JUST CHEESE</div>
-          <ol class="howto">
+          <div class="card-sub" id="introSub">STAGE 01 · JUST CHEESE</div>
+          <ol class="howto" id="howto">
             <li><b>두 그릴</b>에서 패티를 각각 굽고, <b class="c-perfect">초록 PERFECT</b>에서 한 번 더 탭!</li>
             <li><b>빛나는 재료</b>를 순서대로 탭하면 버거가 쌓여요.</li>
             <li>마지막 재료를 넣으면 <b>자동으로 서빙</b>! 빨리 내면 <b class="c-gold">팁</b>까지.</li>
           </ol>
           <div class="card-goal">5분 동안 목표 매출 <b id="goalText">₩350,000</b></div>
           <button class="big-btn" id="startBtn">영업 시작!</button>
-          <div class="build-tag">V0.3 · 일부 그래픽·사운드는 임시 버전입니다</div>
+          <button class="link-btn" id="backBtn">← 스테이지 선택</button>
+          <div class="build-tag">V0.4 · 일부 그래픽·사운드는 임시 버전입니다</div>
         </div>
       </div>
 
@@ -111,16 +142,24 @@
           <h2>일시정지</h2>
           <button class="big-btn" id="resumeBtn">계속하기</button>
           <button class="ghost-btn" id="restartBtn">처음부터 다시</button>
+          <button class="ghost-btn" id="quitBtn">스테이지 선택</button>
         </div>
       </div>
 
       <div class="overlay" id="resultScreen">
-        <div class="card">
+        <div class="confetti" id="confetti"></div>
+        <div class="card result-card">
           <div class="result-title" id="resultTitle">STAGE CLEAR!</div>
+          <div class="result-stars" id="resultStars"></div>
           <div class="result-desc" id="resultDesc"></div>
           <div class="result-money" id="resultMoney">₩0</div>
+          <div class="result-best" id="resultBest"></div>
           <div class="result-stats" id="resultStats"></div>
-          <button class="big-btn" id="againBtn">다시 하기</button>
+          <div class="result-btns">
+            <button class="ghost-btn" id="menuBtn">스테이지</button>
+            <button class="big-btn" id="againBtn">다시 하기</button>
+            <button class="big-btn next" id="nextBtn">다음 스테이지 ▶</button>
+          </div>
         </div>
       </div>
     </div>

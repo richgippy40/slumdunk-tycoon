@@ -1,7 +1,7 @@
 // End-to-end test in real Chrome with mobile touch emulation and a fake clock.
 // Setup once: npm i --no-save playwright-core
 // Run:        node tests/e2e.mjs http://127.0.0.1:8000/ [screenshotDir]
-import { chromium } from 'playwright-core';
+import { launch } from './pw.mjs';
 
 const URL = process.argv[2] || 'http://127.0.0.1:8000/';
 const SHOTS = process.argv[3] || null;
@@ -300,7 +300,7 @@ async function customerCast(browser) {
   }
 }
 
-const browser = await chromium.launch({ channel: 'chrome' });
+const browser = await launch();
 for (const d of DEVICES) await quick(browser, d);
 await customerCast(browser);
 await dualGrill(browser);
