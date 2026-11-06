@@ -5,6 +5,7 @@ import {
   targetCustomer, burgerOf, tapFryer, tapDrink, fryProgress, pourProgress, sideShortfall, drinksReserved,
 } from './logic.js';
 import { STAGES, stageById } from './stages.js';
+import { BURGERS } from './menu.js';
 import { loadProgress, recordResult, isUnlocked } from './save.js';
 import * as art from './art.js';
 import * as sfx from './audio.js';
@@ -330,6 +331,11 @@ function applyStage(s) {
   $('target').textContent = won(cfg.target);
   $('goalText').textContent = won(cfg.target);
   $('comboMeter').classList.toggle('on', !!cfg.combo);
+  // Show the stage's first recipe behind the overlays, as V0.3 did before Start.
+  const first = cfg.burgers ? BURGERS[cfg.burgers[0].id].recipe : cfg.recipe;
+  trayKey = '';
+  setRecipe(first);
+  setTray(first);
 }
 
 function showIntro(s) {
@@ -883,4 +889,5 @@ function render() {
   });
 }
 
+applyStage(cfg);
 showSelect();

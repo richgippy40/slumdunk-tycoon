@@ -1,4 +1,5 @@
-// End-to-end test in real Chrome with mobile touch emulation and a fake clock.
+// End-to-end test in real Chromium with mobile touch emulation and a fake clock.
+// Covers Stage 1 (regression), Stages 2-5, stage select, unlock, save + reload.
 // Setup once: npm i --no-save playwright-core
 // Run:        node tests/e2e.mjs http://127.0.0.1:8000/ [screenshotDir]
 import { launch } from './pw.mjs';
@@ -21,8 +22,8 @@ const check = (dev, name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  [${dev}] ${name}${detail ? ' — ' + detail : ''}`);
 };
 
-async function open(browser, d, { portrait = false } = {}) {
-  const ctx = await browser.newContext({
+async function open(browser, d, { portrait = false, query = '', storage = null, context = null } = {}) {
+  const ctx = context || await browser.newContext({
     viewport: portrait ? { width: d.height, height: d.width } : { width: d.width, height: d.height },
     deviceScaleFactor: 2,
     isMobile: d.mobile,
@@ -35,7 +36,8 @@ async function open(browser, d, { portrait = false } = {}) {
   page.on('requestfailed', (r) => errors.push('request failed ' + r.url()));
   page.on('response', (r) => r.status() >= 400 && errors.push(`${r.status()} ${r.url()}`));
   await page.clock.install();
-  await page.goto(URL);
+  if (storage) await page.addInitScript((v) => localStorage.setItem('slumdunk-tycoon.progress.v1', v), JSON.stringify(storage));
+  await page.goto(URL + query);
   return { ctx, page, errors };
 }
 
@@ -43,16 +45,17 @@ const tapEl = async (page, d, sel) => (d.mobile ? page.tap(sel) : page.click(sel
 const text = (page, sel) => page.$eval(sel, (e) => e.textContent.trim());
 const hasClass = (page, sel, c) => page.$eval(sel, (e, c) => e.classList.contains(c), c);
 
-async function layoutChecks(page, d) {
+async function layoutChecks(page, d, tileCount = 8) {
   const m = await page.evaluate(() => {
     const vw = innerWidth;
     const vh = innerHeight;
     const r = (sel) => document.querySelector(sel).getBoundingClientRect();
     const inside = (b) => b.left >= -1 && b.top >= -1 && b.right <= vw + 1 && b.bottom <= vh + 1;
     const parts = ['.hud', '#sales', '#target', '#time', '#customers', '.grill-panel', '.assembly-panel', '.tray-panel', '#pauseBtn'];
-    const tiles = [...document.querySelectorAll('.tile')].map((t) => t.getBoundingClientRect());
+    const tiles = [...document.querySelectorAll('.tile:not(.off)')].map((t) => t.getBoundingClientRect());
+    const sides = !!document.querySelector('#stage.has-sides');
     // every control must be the topmost element at its own center (not clipped or covered)
-    const hidden = ['#pauseBtn', '#soundBtn', '#grill', '#grill2', ...[...document.querySelectorAll('.tile')].map((t) => `.tile[aria-label="${t.getAttribute('aria-label')}"]`)]
+    const hidden = ['#pauseBtn', '#soundBtn', '#grill', '#grill2', ...(sides ? ['#fryer', '#fountain'] : []), ...[...document.querySelectorAll('.tile:not(.off)')].map((t) => `.tile[aria-label="${t.getAttribute('aria-label')}"]`)]
       .filter(() => !document.querySelector('.overlay.show'))
       .filter((sel) => {
         const el = document.querySelector(sel);
@@ -67,16 +70,17 @@ async function layoutChecks(page, d) {
       minTile: Math.min(...tiles.map((t) => Math.min(t.width, t.height))),
       grill: Math.min(r('#grill').width, r('#grill').height),
       tiles: tiles.length,
+      side: sides ? Math.min(...['#fryer', '#fountain'].map((x) => Math.min(r(x).width, r(x).height))) : 99,
       hidden,
       heads: heads.length,
     };
   });
   check(d.name, 'no page scroll', !m.scroll);
   check(d.name, 'HUD, customers, grill, assembly, tray all on screen', !m.outside.length, m.outside.join(','));
-  check(d.name, '7 ingredient tiles + undo', m.tiles === 8);
+  check(d.name, `${tileCount - 1} ingredient tiles + undo`, m.tiles === tileCount, String(m.tiles));
   check(d.name, 'all buttons visible and tappable (pause, sound, grill, tiles)', !m.hidden.length, m.hidden.join(','));
   check(d.name, 'panel titles on one line', !m.heads);
-  check(d.name, 'touch targets >= 40px', m.minTile >= 40, `smallest tile ${m.minTile.toFixed(0)}px, grill ${m.grill.toFixed(0)}px`);
+  check(d.name, 'touch targets >= 40px', m.minTile >= 40 && m.side >= 40, `smallest tile ${m.minTile.toFixed(0)}px, grill ${m.grill.toFixed(0)}px, side ${m.side.toFixed(0)}px`);
 }
 
 // Plays like a person: watches the needle, taps glowing tiles, one action per `reaction` ms.
@@ -85,13 +89,15 @@ async function playFor(page, d, seconds, reaction = 450) {
   const end = seconds * 1000;
   for (let t = 0; t < end; ) {
     const s = await page.evaluate(() => {
-      const grill = document.getElementById('grill');
-      const needle = parseFloat(document.getElementById('needle').style.left) || 0;
+      const lanes = ['grill', 'grill2'].map((id) => {
+        const g = document.getElementById(id);
+        return { id, cooking: g.classList.contains('cooking'), full: g.classList.contains('full'), needle: parseFloat(g.querySelector('.needle').style.left) || 0 };
+      });
       const next = document.querySelector('.tile.next');
+      const side = document.querySelector('.side-btn.need');
       return {
-        cooking: grill.classList.contains('cooking'),
-        full: grill.classList.contains('full'),
-        needle,
+        lanes,
+        side: side ? side.id : null,
         next: next ? next.dataset.key : null,
         customer: !!document.querySelector('.cust:not(.leave)'),
         result:
@@ -101,8 +107,11 @@ async function playFor(page, d, seconds, reaction = 450) {
     });
     if (s.result) break;
     let sel = null;
-    if (s.cooking && s.needle >= 42 && s.needle < 58) sel = '#grill';
-    else if (!s.cooking && !s.full) sel = '#grill';
+    const ready = s.lanes.find((l) => l.cooking && l.needle >= 42 && l.needle < 58);
+    const idle = s.lanes.find((l) => !l.cooking && !l.full);
+    if (ready) sel = '#' + ready.id;
+    else if (idle) sel = '#' + idle.id;
+    else if (s.side) sel = '#' + s.side;
     else if (s.next && s.customer) sel = `.tile[data-key=${s.next}]`;
     if (sel) {
       await tapEl(page, d, sel);
@@ -117,8 +126,20 @@ async function playFor(page, d, seconds, reaction = 450) {
   return taps;
 }
 
+async function enter(page, d, id) {
+  await tapEl(page, d, `.stage-card[data-stage="${id}"]`);
+  await page.clock.runFor(200);
+  await tapEl(page, d, '#startBtn');
+}
+
 async function fullGame(browser, d) {
   const { ctx, page, errors } = await open(browser, d);
+  check(d.name, 'stage select is the first screen', await hasClass(page, '#selectScreen', 'show'));
+  check(d.name, 'fresh save: only stage 1 open', (await page.$$('.stage-card.locked')).length === 4);
+  await tapEl(page, d, '.stage-card[data-stage="2"]');
+  check(d.name, 'locked stage cannot be entered', await hasClass(page, '#selectScreen', 'show'));
+  await tapEl(page, d, '.stage-card[data-stage="1"]');
+  check(d.name, 'stage 1 intro keeps the V0.3 how-to', (await text(page, '#howto')).includes('두 그릴') && (await text(page, '#introSub')) === 'STAGE 01 · JUST CHEESE');
   await tapEl(page, d, '#startBtn');
   await page.clock.runFor(1500);
   check(d.name, 'start screen closes, game running', !(await hasClass(page, '#startScreen', 'show')));
@@ -166,6 +187,7 @@ async function fullGame(browser, d) {
   check(d.name, 'last ingredient auto-serves (no button)', sales !== '₩0', sales);
   check(d.name, 'customer reacts happy', (await page.$$('.cust.mood-happy, .cust.leave')).length >= 1);
   check(d.name, 'no finish/sell buttons exist', !(await page.$('#finish')) && !(await page.$('#serve')));
+  check(d.name, 'stage 1 has no side station / combo meter', !(await page.isVisible('#station')) && !(await page.isVisible('#comboMeter')));
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/after-serve.png` });
 
   // Pause freezes time
@@ -188,9 +210,93 @@ async function fullGame(browser, d) {
   const stats = await page.$$eval('.result-stats div', (x) => x.map((e) => e.textContent).join(' · '));
   check(d.name, 'result shows title, sales, stats', /STAGE CLEAR!|TIME OVER/.test(title) && money.startsWith('₩'), `${title} ${money} | ${stats} | ${taps} taps`);
 
+  check(d.name, 'result shows stars', (await page.$$('#resultStars i')).length === 3);
+  const cleared = title === 'STAGE CLEAR!';
+  check(d.name, 'clear -> next stage button', !cleared || (await page.isVisible('#nextBtn')));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('slumdunk-tycoon.progress.v1')));
+  check(d.name, 'result saved to localStorage', saved?.stages?.[1]?.best > 0 && saved.stages[1].cleared === cleared, JSON.stringify(saved));
+
   await tapEl(page, d, '#againBtn');
   await page.clock.runFor(500);
   check(d.name, 'play again resets to ₩0 / 05:00', (await text(page, '#sales')) === '₩0' && (await text(page, '#time')).startsWith('0'));
+  await tapEl(page, d, '#pauseBtn');
+  await tapEl(page, d, '#quitBtn');
+  check(d.name, 'pause -> stage select', await hasClass(page, '#selectScreen', 'show'));
+  check(d.name, 'stage 2 unlocked after clearing stage 1', !(await hasClass(page, '.stage-card[data-stage="2"]', 'locked')));
+  await page.reload();
+  check(d.name, 'unlock survives reload', !(await hasClass(page, '.stage-card[data-stage="2"]', 'locked')) && (await hasClass(page, '.stage-card[data-stage="3"]', 'locked')));
+  check(d.name, 'best record shown on stage card', (await text(page, '.stage-card[data-stage="1"] .sc-best')).startsWith('BEST ₩'));
+  check(d.name, 'no JS errors / failed requests', !errors.length, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
+// Stages 2-5: play each stage for the full 5 minutes, check its new feature and unlocks.
+async function campaign(browser, d) {
+  const { ctx, page, errors } = await open(browser, d, { storage: { stages: { 1: { cleared: true, best: 400000, stars: 1, bestCombo: 0, plays: 1 } } } });
+  for (const id of [2, 3, 4, 5]) {
+    const tag = `${d.name} S${id}`;
+    check(tag, `stage ${id} unlocked`, !(await hasClass(page, `.stage-card[data-stage="${id}"]`, 'locked')));
+    if (id < 5) check(tag, `stage ${id + 1} still locked`, await hasClass(page, `.stage-card[data-stage="${id + 1}"]`, 'locked'));
+    await enter(page, d, id);
+    await page.clock.runFor(1200);
+    check(tag, 'HUD shows stage', (await text(page, '#stageNo')) === `STAGE 0${id}`);
+    check(tag, 'side station visible', await page.isVisible('#station'));
+    await layoutChecks(page, { ...d, name: tag }, (await page.$$('.tile:not(.off)')).length);
+    // Feature checks
+    await tapEl(page, d, '#fryer');
+    check(tag, 'fryer cooking after one tap', await hasClass(page, '#fryer', 'cooking'));
+    await tapEl(page, d, '#fountain');
+    await page.clock.runFor(5300);
+    check(tag, 'fryer makes 3 fries, fountain pours 1 cup', (await text(page, '#friesCount')) === '3/6' && (await text(page, '#drinkCount')).startsWith('1/4'));
+    if (id >= 3) {
+      const info = await page.evaluate(() => {
+        const t = document.querySelector('.seat.target .menu-tag');
+        return { tag: t?.textContent, head: document.querySelector('.assembly-panel .panel-head span').textContent, tiles: [...document.querySelectorAll('.tile:not(.off):not(.undo)')].map((x) => x.dataset.key).join(',') };
+      });
+      const names = { 'JUST CHEESE': '저스트치즈버거', 'BACON CHEESE': '베이컨치즈버거', 'ALL DAY': '올데이버거' };
+      check(tag, 'target customer menu = assembly recipe', info.tag && names[info.tag] === info.head, JSON.stringify(info));
+      check(tag, 'tray matches the recipe', info.head !== '베이컨치즈버거' || info.tiles.includes('bacon'), info.tiles);
+    }
+    const playTo = async (sec) => {
+      const now = await page.evaluate(() => { const [m, s] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +s); });
+      if (sec > now) await playFor(page, d, sec - now);
+    };
+    if (id === 4) {
+      await playTo(47);
+      check(tag, 'RUSH HOUR banner + combo meter', (await text(page, '#banner')).includes('RUSH') || (await hasClass(page, '#stage', 'rush')));
+      check(tag, 'combo counts serves', Number(await text(page, '#comboNum')) >= 1, await text(page, '#comboNum'));
+    }
+    if (id === 5) {
+      await page.evaluate(() => {
+        const seen = { grp: 0, crown: 0, vipBubble: 0 };
+        window.seenS5 = seen;
+        new MutationObserver(() => {
+          if (document.querySelector('#customers .grp')) seen.grp++;
+          if (document.querySelector('#customers .crown')) seen.crown++;
+          if (document.querySelector('#customers .bubble.vip .menu-tag.m-grand')) seen.vipBubble++;
+        }).observe(document.getElementById('customers'), { childList: true, subtree: true });
+      });
+      await playTo(275);
+      const seen = await page.evaluate(() => window.seenS5);
+      check(tag, 'group customers shown with group tags', seen.grp > 0, JSON.stringify(seen));
+      check(tag, 'VIP shown with crown and GRAND order', seen.crown > 0 && seen.vipBubble > 0, JSON.stringify(seen));
+      check(tag, 'LAST CALL state', await hasClass(page, '#stage', 'lastcall'));
+    }
+    await playFor(page, d, 300);
+    await page.clock.runFor(2000);
+    const title = await text(page, '#resultTitle');
+    const money = await text(page, '#resultMoney');
+    const stats = await page.$$eval('.result-stats div', (x) => x.map((e) => e.textContent).join(' · '));
+    check(tag, 'result after 5:00', await hasClass(page, '#resultScreen', 'show'), `${title} ${money} | ${stats}`);
+    check(tag, 'expert bot clears the stage', title === (id === 5 ? 'GRAND OPENING!' : 'STAGE CLEAR!'), title);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/result-s${id}.png` });
+    if (id < 5) {
+      check(tag, 'next stage button', await page.isVisible('#nextBtn'));
+      await tapEl(page, d, '#menuBtn');
+    } else check(tag, 'final stage: no next button', !(await page.isVisible('#nextBtn')));
+  }
+  const totals = await page.evaluate(() => JSON.parse(localStorage.getItem('slumdunk-tycoon.progress.v1')));
+  check(d.name, 'all five stages saved as cleared', [1, 2, 3, 4, 5].every((i) => totals.stages[i]?.cleared), JSON.stringify(totals));
   check(d.name, 'no JS errors / failed requests', !errors.length, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -198,7 +304,7 @@ async function fullGame(browser, d) {
 async function quick(browser, d) {
   const { ctx, page, errors } = await open(browser, d);
   await layoutChecks(page, d);
-  await tapEl(page, d, '#startBtn');
+  await enter(page, d, 1);
   await page.clock.runFor(1200);
   await layoutChecks(page, d);
   await tapEl(page, d, '#grill');
@@ -214,6 +320,16 @@ async function quick(browser, d) {
   check(d.name, 'no JS errors / failed requests', !errors.length, errors.slice(0, 3).join(' | '));
   await ctx.close();
 
+  // Busiest layout (Stage 5: station, combo meter, VIP/group tags) on every device.
+  const s5 = await open(browser, d, { query: '?unlock=all' });
+  check(d.name, '?unlock=all opens every stage', (await s5.page.$$('.stage-card.locked')).length === 0);
+  await enter(s5.page, d, 5);
+  await s5.page.clock.runFor(90000);
+  await layoutChecks(s5.page, { ...d, name: d.name + ' S5' }, await s5.page.$$eval('.tile:not(.off)', (x) => x.length));
+  if (SHOTS) await s5.page.screenshot({ path: `${SHOTS}/s5-${d.width}x${d.height}.png` });
+  check(d.name, 'S5 no JS errors', !s5.errors.length, s5.errors.slice(0, 3).join(' | '));
+  await s5.ctx.close();
+
   if (d.mobile && d.width < 1000) {
     const p = await open(browser, d, { portrait: true });
     const shown = await p.page.$eval('#rotate', (e) => getComputedStyle(e).display !== 'none');
@@ -227,7 +343,7 @@ async function dualGrill(browser) {
   const { ctx, page, errors } = await open(browser, d);
   // Stop automatic clock advancement during touch actions; only runFor moves it.
   await page.clock.pauseAt(await page.evaluate(() => new Date(Date.now() + 1000).toISOString()));
-  await tapEl(page, d, '#startBtn');
+  await enter(page, d, 1);
   // Settle the optional fullscreen transition and decode the first portrait
   // before measuring cooking time; neither belongs to the gauge assertion.
   await page.clock.runFor(1500);
@@ -264,7 +380,7 @@ async function dualGrill(browser) {
 async function customerCast(browser) {
   for (const d of [DEVICES[0], DEVICES[5]]) {
     const { ctx, page, errors } = await open(browser, d);
-    await tapEl(page, d, '#startBtn');
+    await enter(page, d, 1);
     await tapEl(page, d, '#pauseBtn');
     // Fixture the selected portraits while paused to inspect every asset,
     // including characters not randomly drawn during the gameplay checks.
@@ -305,6 +421,7 @@ for (const d of DEVICES) await quick(browser, d);
 await customerCast(browser);
 await dualGrill(browser);
 await fullGame(browser, DEVICES[0]);
+await campaign(browser, DEVICES[0]);
 await browser.close();
 
 const failed = results.filter((r) => !r.ok);
