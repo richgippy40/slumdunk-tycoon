@@ -3,6 +3,7 @@
 // Setup once: npm i --no-save playwright-core
 // Run:        node tests/e2e.mjs http://127.0.0.1:8000/ [screenshotDir]
 import { launch } from './pw.mjs';
+import { stageById, DURATION } from '../js/stages.js';
 
 const URL = process.argv[2] || 'http://127.0.0.1:8000/';
 const SHOTS = process.argv[3] || null;
@@ -104,13 +105,13 @@ async function playFor(page, d, seconds, reaction = 450, stopAt = 999) {
         side: side ? side.id : null,
         next: next ? next.dataset.key : null,
         customer: !!document.querySelector('.cust:not(.leave)'),
-        elapsed: (() => { const [m, x] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +x); })(),
+        remaining: (() => { const [m, x] = document.getElementById('time').textContent.split(':'); return +m * 60 + +x; })(),
         result:
           document.getElementById('resultScreen').classList.contains('show') ||
           document.getElementById('time').textContent === '00:00',
       };
     });
-    if (s.result || s.elapsed >= stopAt) break;
+    if (s.result || DURATION - s.remaining >= stopAt) break;
     let sel = null;
     const ready = s.lanes.find((l) => l.cooking && l.needle >= 42 && l.needle < 58);
     const idle = s.lanes.find((l) => !l.cooking && !l.full);
@@ -145,6 +146,7 @@ async function fullGame(browser, d) {
   check(d.name, 'locked stage cannot be entered', await hasClass(page, '#selectScreen', 'show'));
   await tapEl(page, d, '.stage-card[data-stage="1"]');
   check(d.name, 'stage 1 intro keeps the V0.3 how-to', (await text(page, '#howto')).includes('두 그릴') && (await text(page, '#introSub')) === 'STAGE 01 · JUST CHEESE');
+  check(d.name, 'intro says 2 minutes and the new target', (await text(page, '.card-goal')) === '2분 동안 목표 매출 ₩90,000', await text(page, '.card-goal'));
   await tapEl(page, d, '#startBtn');
   await page.clock.runFor(1500);
   check(d.name, 'start screen closes, game running', !(await hasClass(page, '#startScreen', 'show')));
@@ -203,12 +205,12 @@ async function fullGame(browser, d) {
   await tapEl(page, d, '#resumeBtn');
 
   // Play the rest of the 5 minutes
-  const taps = await playFor(page, d, 300);
+  const taps = await playFor(page, d, DURATION);
   await page.clock.runFor(2000);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/result.png` });
   const seats = await page.$$eval('.seat', (s) => s.filter((x) => !x.classList.contains('locked')).length);
   check(d.name, 'all 4 seats open by the end', seats === 4);
-  check(d.name, 'result screen after 5:00', await hasClass(page, '#resultScreen', 'show'));
+  check(d.name, `result screen after ${DURATION}s`, await hasClass(page, '#resultScreen', 'show'));
   check(d.name, 'timer shows 00:00', (await text(page, '#time')) === '00:00');
   const title = await text(page, '#resultTitle');
   const money = await text(page, '#resultMoney');
@@ -223,7 +225,7 @@ async function fullGame(browser, d) {
 
   await tapEl(page, d, '#againBtn');
   await page.clock.runFor(500);
-  check(d.name, 'play again resets to ₩0 / 05:00', (await text(page, '#sales')) === '₩0' && (await text(page, '#time')).startsWith('0'));
+  check(d.name, 'play again resets to ₩0 / 02:00', (await text(page, '#sales')) === '₩0' && (await text(page, '#time')) === '02:00', await text(page, '#time'));
   await tapEl(page, d, '#pauseBtn');
   await tapEl(page, d, '#quitBtn');
   check(d.name, 'pause -> stage select', await hasClass(page, '#selectScreen', 'show'));
@@ -266,13 +268,13 @@ async function campaign(browser, d) {
     const playTo = async (sec) => {
       // Game time can trail the fake clock (frame dt is capped), so loop on the shown timer.
       for (let i = 0; i < 20; i++) {
-        const now = await page.evaluate(() => { const [m, s] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +s); });
+        const now = await page.evaluate((DURATION) => { const [m, s] = document.getElementById('time').textContent.split(':'); return DURATION - (+m * 60 + +s); }, DURATION);
         if (now >= sec) break;
         await playFor(page, d, Math.max(1, sec - now), 450, sec);
       }
     };
     if (id === 4) {
-      await playTo(47);
+      await playTo(stageById(4).rush[0].from + 2);
       check(tag, 'RUSH HOUR banner + combo meter', (await text(page, '#banner')).includes('RUSH') || (await hasClass(page, '#stage', 'rush')));
       check(tag, 'combo counts serves', Number(await text(page, '#comboNum')) >= 1, await text(page, '#comboNum'));
     }
@@ -286,18 +288,18 @@ async function campaign(browser, d) {
           if (document.querySelector('#customers .bubble.vip .menu-tag.m-grand')) seen.vipBubble++;
         }).observe(document.getElementById('customers'), { childList: true, subtree: true });
       });
-      await playTo(275);
+      await playTo(stageById(5).lastCall.at + 5);
       const seen = await page.evaluate(() => window.seenS5);
       check(tag, 'group customers shown with group tags', seen.grp > 0, JSON.stringify(seen));
       check(tag, 'VIP shown with crown and GRAND order', seen.crown > 0 && seen.vipBubble > 0, JSON.stringify(seen));
       check(tag, 'LAST CALL state', await hasClass(page, '#stage', 'lastcall'), await page.evaluate(() => `${document.getElementById('time').textContent} ${document.getElementById('stage').className}`));
     }
-    await playFor(page, d, 300);
+    await playFor(page, d, DURATION);
     await page.clock.runFor(2000);
     const title = await text(page, '#resultTitle');
     const money = await text(page, '#resultMoney');
     const stats = await page.$$eval('.result-stats div', (x) => x.map((e) => e.textContent).join(' · '));
-    check(tag, 'result after 5:00', await hasClass(page, '#resultScreen', 'show'), `${title} ${money} | ${stats}`);
+    check(tag, `result after ${DURATION}s`, await hasClass(page, '#resultScreen', 'show'), `${title} ${money} | ${stats}`);
     check(tag, 'expert bot clears the stage', title === (id === 5 ? 'GRAND OPENING!' : 'STAGE CLEAR!'), title);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/result-s${id}.png` });
     if (id < 5) {

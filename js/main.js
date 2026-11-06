@@ -330,6 +330,8 @@ function applyStage(s) {
   $('stageName').textContent = cfg.name;
   $('target').textContent = won(cfg.target);
   $('goalText').textContent = won(cfg.target);
+  $('goalMinutes').textContent = String(Math.round(cfg.duration / 60));
+  $('time').textContent = `${pad2(Math.floor(cfg.duration / 60))}:${pad2(cfg.duration % 60)}`;
   $('comboMeter').classList.toggle('on', !!cfg.combo);
   // Show the stage's first recipe behind the overlays, as V0.3 did before Start.
   const first = cfg.burgers ? BURGERS[cfg.burgers[0].id].recipe : cfg.recipe;

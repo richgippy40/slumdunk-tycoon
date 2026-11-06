@@ -462,7 +462,7 @@ export function update(g, dt) {
       if (r >= 0) {
         emit(g, 'rushStart', { index: r, until: cfg.rush[r].to });
         g.nextSpawn = Math.min(g.nextSpawn, g.t + cfg.rushDelay);
-      } else emit(g, 'rushEnd', { index: g.rushIndex });
+      } else if (g.t < cfg.duration) emit(g, 'rushEnd', { index: g.rushIndex }); // no 'rush over' banner at the final whistle
       g.rushIndex = r;
     }
   }

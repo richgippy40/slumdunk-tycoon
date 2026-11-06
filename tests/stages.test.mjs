@@ -6,7 +6,7 @@ import {
   STAGE1, createGame, update, tapGrill, tapIngredient, cookProgress, currentRecipe, currentBurger,
   targetCustomer, tapFryer, tapDrink, recipeOf, starsFor, multiplier, LABELS,
 } from '../js/logic.js';
-import { STAGES } from '../js/stages.js';
+import { STAGES, DURATION } from '../js/stages.js';
 import { BURGERS } from '../js/menu.js';
 import { ICONS, LAYERS, BURGER_ICONS } from '../js/art.js';
 import { playBot, median } from './sim.mjs';
@@ -39,7 +39,7 @@ const build = (g) => {
   for (let i = 0; i < 12 && !g.plated; i++) tapIngredient(g, currentRecipe(g)[g.stack.length]);
 };
 
-test('Stage 1 regression fingerprint: deterministic bot results are unchanged from V0.3', () => {
+test('engine regression fingerprint: V0.3 Stage 1 rules give identical bot results', () => {
   // Values recorded from main@1701be4 before the Stage 2-5 refactor.
   const legacy = (reaction) => {
     const r = playBot(STAGE1, { reaction, seed: 3, lanes: 1 });
@@ -47,16 +47,35 @@ test('Stage 1 regression fingerprint: deterministic bot results are unchanged fr
   };
   assert.deepEqual(legacy(0.45), { cleared: true, sales: 741200, served: 68, tips: 102000, bonus: 34000, lost: 0, grades: { PERFECT: 71, GOOD: 0, MISS: 0 } });
   assert.deepEqual(legacy(1.0), { cleared: false, sales: 314500, served: 32, tips: 13700, bonus: 16000, lost: 0, grades: { PERFECT: 35, GOOD: 0, MISS: 0 } });
-  assert.equal(STAGES[0].target, 350000);
-  for (const k of ['duration', 'price', 'recipe', 'cookTime', 'zones', 'tips', 'slotUnlocks', 'spawnDelay', 'patience', 'pattyStockMax']) {
+});
+
+test('playable Stage 1 (V0.5): same rules as V0.3, only clock, seats, target and stars changed', () => {
+  for (const k of ['price', 'recipe', 'cookTime', 'zones', 'tips', 'spawnDelay', 'patience', 'pattyStockMax', 'perfectBonus']) {
     assert.deepEqual(STAGES[0][k], STAGE1[k], `Stage 1 ${k} must not change`);
+  }
+  assert.equal(STAGES[0].duration, DURATION);
+  assert.ok(STAGES[0].target < STAGE1.target);
+});
+
+test('every timed event of every stage happens inside the stage clock', () => {
+  for (const s of STAGES) {
+    const times = [
+      ...s.slotUnlocks,
+      ...(s.burgers || []).map((b) => b.from || 0),
+      ...(s.rush || []).flatMap((r) => [r.from, r.to]),
+      ...(s.groups?.times || []),
+      ...(s.vip?.times || []),
+      ...(s.lastCall ? [s.lastCall.at] : []),
+    ];
+    assert.ok(times.every((t) => t >= 0 && t <= s.duration), `stage ${s.id}: ${times}`);
+    for (const t of [...(s.groups?.times || []), ...(s.vip?.times || [])]) assert.ok(t <= s.duration - 20, `stage ${s.id}: event at ${t}s leaves time to serve`);
   }
 });
 
-test('stage data: 5 stages of 300s, valid menus, recipes fit the 7-slot tray', () => {
+test('stage data: 5 stages of 2 minutes, valid menus, recipes fit the 7-slot tray', () => {
   assert.deepEqual(STAGES.map((s) => s.id), [1, 2, 3, 4, 5]);
   for (const s of STAGES) {
-    assert.equal(s.duration, 300);
+    assert.equal(s.duration, DURATION);
     assert.ok(s.target > 0 && s.stars.length === 2 && s.stars[0] > s.target && s.stars[1] > s.stars[0], `stage ${s.id} stars`);
     assert.equal(s.howto.length, 3);
     for (const b of s.burgers || []) assert.ok(BURGERS[b.id], `stage ${s.id} burger ${b.id}`);
@@ -153,7 +172,7 @@ test('a ready burger goes to the oldest customer it can fully serve right now', 
 test('stage 2 order mix: singles, partial sides and full sets all appear', () => {
   const g = createGame(S[2], 5);
   const seen = new Set();
-  for (let t = 0; t < 300; t += 0.05) {
+  for (let t = 0; t < g.cfg.duration; t += 0.05) {
     update(g, 0.05);
     for (const e of g.events.splice(0)) {
       if (e.type === 'arrive') {
@@ -206,11 +225,12 @@ test('orphan burger: the next customer orders it, so the board never deadlocks',
   assert.ok(waitingFor.includes(menu), `someone orders the ${menu} on the board: ${waitingFor}`);
 });
 
-test('stage 3 new menu beat: ALL DAY appears only from 1:40 with a newMenu event', () => {
-  const g = createGame(S[3], 9);
+test('stage 3 new menu beat: ALL DAY appears only from its start time with a newMenu event', () => {
+  const from = S[3].burgers.find((b) => b.id === 'allday').from;
+  const g = createGame(S[3], 1); // a seed whose 2-minute order list has all three menus
   const orders = [];
   let beat = null;
-  for (let t = 0; t < 300; t += 0.05) {
+  for (let t = 0; t < g.cfg.duration; t += 0.05) {
     update(g, 0.05);
     for (const e of g.events.splice(0)) {
       if (e.type === 'arrive') orders.push([g.t, g.slots[e.slot].order.burger]);
@@ -218,8 +238,8 @@ test('stage 3 new menu beat: ALL DAY appears only from 1:40 with a newMenu event
     }
   }
   assert.equal(beat.burger, 'allday');
-  assert.ok(Math.abs(beat.t - 100) < 0.1);
-  assert.ok(orders.every(([t, b]) => b !== 'allday' || t >= 100));
+  assert.ok(Math.abs(beat.t - from) < 0.1);
+  assert.ok(orders.every(([t, b]) => b !== 'allday' || t >= from));
   assert.ok(orders.some(([, b]) => b === 'allday'));
   assert.ok(orders.some(([, b]) => b === 'bacon') && orders.some(([, b]) => b === 'cheese'));
 });
@@ -230,7 +250,7 @@ test('rush hour: start/end events and faster arrivals during rush', () => {
   const ev = [];
   const gaps = { rush: [], calm: [] };
   let lastArrive = null;
-  for (let t = 0; t < 300; t += 0.05) {
+  for (let t = 0; t < g.cfg.duration; t += 0.05) {
     update(g, 0.05);
     for (const e of g.events.splice(0)) {
       if (e.type === 'rushStart' || e.type === 'rushEnd') ev.push([e.type, Math.round(e.t)]);
@@ -242,7 +262,9 @@ test('rush hour: start/end events and faster arrivals during rush', () => {
       }
     }
   }
-  assert.deepEqual(ev.slice(0, 4), [['rushStart', 45], ['rushEnd', 85], ['rushStart', 140], ['rushEnd', 185]]);
+  // The last rush runs to the final whistle, so it has no rushEnd.
+  const want = S[4].rush.flatMap((r) => [['rushStart', r.from], ['rushEnd', r.to]]).filter(([, t]) => t < S[4].duration);
+  assert.deepEqual(ev, want);
   assert.ok(median(gaps.rush) < median(gaps.calm), `rush ${median(gaps.rush)} < calm ${median(gaps.calm)}`);
 });
 
@@ -264,9 +286,9 @@ test('combo grows per serve, pays a capped bonus, breaks when a customer leaves'
   assert.ok(types(g).includes('comboBreak'));
 });
 
-test('every 8th serve starts FEVER: sales x1.5 for 15 seconds', () => {
+test('every Nth serve starts FEVER: sales x1.5 for the fever time', () => {
   const g = emptyShop(S[4]);
-  g.combo = 7;
+  g.combo = S[4].combo.feverEvery - 1;
   seat(g, 0, { burger: 'cheese' });
   cookPerfect(g);
   build(g);
@@ -279,7 +301,7 @@ test('every 8th serve starts FEVER: sales x1.5 for 15 seconds', () => {
   assert.equal(e.mult, 1.5);
   assert.equal(e.price, Math.round((BURGERS.cheese.price * 1.5) / 100) * 100);
   assert.equal(e.total % 100, 0, 'amounts stay in ₩100 steps');
-  step(g, 16);
+  step(g, S[4].combo.feverTime + 1);
   assert.equal(multiplier(g), 1);
 });
 
@@ -314,7 +336,7 @@ test('groups arrive together on schedule; all served = group bonus', () => {
   assert.ok(g.sales - sales0 >= S[5].groups.bonus);
 });
 
-test('VIP arrives at 1:15 ordering the double-patty GRAND set', () => {
+test('VIP arrives on schedule ordering the double-patty GRAND set', () => {
   const g = createGame(S[5], 6);
   let vip = null;
   while (!vip && g.t < 200) {
@@ -323,12 +345,12 @@ test('VIP arrives at 1:15 ordering the double-patty GRAND set', () => {
     for (const c of g.slots) if (c && c.status === 'waiting' && !c.vip) c.patience = Math.min(c.patience, g.t - c.arrive + 0.1);
   }
   assert.ok(vip && vip.vip);
-  assert.ok(g.t >= 75);
+  assert.ok(g.t >= S[5].vip.times[0]);
   assert.deepEqual(vip.order, { burger: 'grand', fries: true, drink: true });
   assert.equal(recipeOf(g, 'grand').filter((k) => k === 'meat').length, 2);
 });
 
-test('LAST CALL from 4:30 multiplies sales', () => {
+test('LAST CALL near the end multiplies sales', () => {
   const g = emptyShop(S[5]);
   step(g, S[5].lastCall.at - 0.2);
   assert.equal(multiplier(g), 1);
@@ -337,7 +359,7 @@ test('LAST CALL from 4:30 multiplies sales', () => {
   assert.equal(multiplier(g), S[5].lastCall.mult);
 });
 
-test('all stages run 5:00 to a result without errors for every seed', () => {
+test('all stages run to the final whistle with a result for every seed', () => {
   for (const s of STAGES) {
     for (let seed = 1; seed <= 5; seed++) {
       const r = playBot(s, { reaction: 0.7, seed, mistakes: 0.05 });
@@ -348,16 +370,19 @@ test('all stages run 5:00 to a result without errors for every seed', () => {
 });
 
 // ---------- Balance (simulated players; see tests/balance.mjs for the full table) ----------
-test('balance: experts earn 3 stars, casual players usually clear, slow players fall short', () => {
+test('balance (V0.5, 30% easier): experts 3 stars, casual always clears, beginners mostly clear, slow fall short', () => {
   const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   for (const s of STAGES) {
     const runs = (reaction, mistakes) => seeds.map((seed) => playBot(s, { reaction, mistakes, seed }));
     const expert = runs(0.45, 0);
     const casual = runs(0.8, 0.05);
+    const beginner = runs(1.0, 0.08);
     const slow = runs(1.3, 0.1);
     assert.ok(expert.every((r) => r.stars === 3), `stage ${s.id}: expert 3 stars`);
     const clear = casual.filter((r) => r.cleared).length / seeds.length;
-    assert.ok(clear >= 0.6, `stage ${s.id}: casual clear rate ${clear}`);
+    assert.ok(clear === 1, `stage ${s.id}: casual clear rate ${clear}`);
+    const beginnerClear = beginner.filter((r) => r.cleared).length / seeds.length;
+    assert.ok(beginnerClear >= 0.5, `stage ${s.id}: beginner clear rate ${beginnerClear}`);
     assert.ok(slow.every((r) => !r.cleared), `stage ${s.id}: slow player should not clear`);
   }
 });
