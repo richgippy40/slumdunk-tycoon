@@ -1785,3 +1785,8 @@ img {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Keep the 4th customer's order bubble clear of the side station. */
+.has-sides .customers {
+  left: 160px;
+  right: 252px;
+}

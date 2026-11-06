@@ -258,8 +258,12 @@ async function campaign(browser, d) {
       check(tag, 'tray matches the recipe', info.head !== '베이컨치즈버거' || info.tiles.includes('bacon'), info.tiles);
     }
     const playTo = async (sec) => {
-      const now = await page.evaluate(() => { const [m, s] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +s); });
-      if (sec > now) await playFor(page, d, sec - now);
+      // Game time can trail the fake clock (frame dt is capped), so loop on the shown timer.
+      for (let i = 0; i < 20; i++) {
+        const now = await page.evaluate(() => { const [m, s] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +s); });
+        if (now >= sec) break;
+        await playFor(page, d, Math.max(1, sec - now));
+      }
     };
     if (id === 4) {
       await playTo(47);
