@@ -6,6 +6,8 @@ import { launch } from './pw.mjs';
 
 const URL = process.argv[2] || 'http://127.0.0.1:8000/';
 const SHOTS = process.argv[3] || null;
+// ONLY=5 (or ONLY=3,4) runs just those campaign stages, e.g. while debugging.
+const ONLY_STAGES = process.env.ONLY ? process.env.ONLY.split(',').map(Number) : null;
 
 const DEVICES = [
   { name: 'iPhone 14 (844x390)', width: 844, height: 390, mobile: true },
@@ -84,7 +86,9 @@ async function layoutChecks(page, d, tileCount = 8) {
 }
 
 // Plays like a person: watches the needle, taps glowing tiles, one action per `reaction` ms.
-async function playFor(page, d, seconds, reaction = 450) {
+// stopAt: stop once the game timer shows this many seconds elapsed (the fake clock
+// also advances with real time, so counting runFor alone overshoots).
+async function playFor(page, d, seconds, reaction = 450, stopAt = 999) {
   let taps = 0;
   const end = seconds * 1000;
   for (let t = 0; t < end; ) {
@@ -100,12 +104,13 @@ async function playFor(page, d, seconds, reaction = 450) {
         side: side ? side.id : null,
         next: next ? next.dataset.key : null,
         customer: !!document.querySelector('.cust:not(.leave)'),
+        elapsed: (() => { const [m, x] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +x); })(),
         result:
           document.getElementById('resultScreen').classList.contains('show') ||
           document.getElementById('time').textContent === '00:00',
       };
     });
-    if (s.result) break;
+    if (s.result || s.elapsed >= stopAt) break;
     let sel = null;
     const ready = s.lanes.find((l) => l.cooking && l.needle >= 42 && l.needle < 58);
     const idle = s.lanes.find((l) => !l.cooking && !l.full);
@@ -232,11 +237,12 @@ async function fullGame(browser, d) {
 
 // Stages 2-5: play each stage for the full 5 minutes, check its new feature and unlocks.
 async function campaign(browser, d) {
-  const { ctx, page, errors } = await open(browser, d, { storage: { stages: { 1: { cleared: true, best: 400000, stars: 1, bestCombo: 0, plays: 1 } } } });
-  for (const id of [2, 3, 4, 5]) {
+  const { ctx, page, errors } = await open(browser, d, { query: ONLY_STAGES ? '?unlock=all' : '', storage: { stages: { 1: { cleared: true, best: 400000, stars: 1, bestCombo: 0, plays: 1 } } } });
+  const ids = ONLY_STAGES || [2, 3, 4, 5];
+  for (const id of ids) {
     const tag = `${d.name} S${id}`;
     check(tag, `stage ${id} unlocked`, !(await hasClass(page, `.stage-card[data-stage="${id}"]`, 'locked')));
-    if (id < 5) check(tag, `stage ${id + 1} still locked`, await hasClass(page, `.stage-card[data-stage="${id + 1}"]`, 'locked'));
+    if (id < 5 && !ONLY_STAGES) check(tag, `stage ${id + 1} still locked`, await hasClass(page, `.stage-card[data-stage="${id + 1}"]`, 'locked'));
     await enter(page, d, id);
     await page.clock.runFor(1200);
     check(tag, 'HUD shows stage', (await text(page, '#stageNo')) === `STAGE 0${id}`);
@@ -262,7 +268,7 @@ async function campaign(browser, d) {
       for (let i = 0; i < 20; i++) {
         const now = await page.evaluate(() => { const [m, s] = document.getElementById('time').textContent.split(':'); return 300 - (+m * 60 + +s); });
         if (now >= sec) break;
-        await playFor(page, d, Math.max(1, sec - now));
+        await playFor(page, d, Math.max(1, sec - now), 450, sec);
       }
     };
     if (id === 4) {
@@ -284,7 +290,7 @@ async function campaign(browser, d) {
       const seen = await page.evaluate(() => window.seenS5);
       check(tag, 'group customers shown with group tags', seen.grp > 0, JSON.stringify(seen));
       check(tag, 'VIP shown with crown and GRAND order', seen.crown > 0 && seen.vipBubble > 0, JSON.stringify(seen));
-      check(tag, 'LAST CALL state', await hasClass(page, '#stage', 'lastcall'));
+      check(tag, 'LAST CALL state', await hasClass(page, '#stage', 'lastcall'), await page.evaluate(() => `${document.getElementById('time').textContent} ${document.getElementById('stage').className}`));
     }
     await playFor(page, d, 300);
     await page.clock.runFor(2000);
@@ -300,7 +306,7 @@ async function campaign(browser, d) {
     } else check(tag, 'final stage: no next button', !(await page.isVisible('#nextBtn')));
   }
   const totals = await page.evaluate(() => JSON.parse(localStorage.getItem('slumdunk-tycoon.progress.v1')));
-  check(d.name, 'all five stages saved as cleared', [1, 2, 3, 4, 5].every((i) => totals.stages[i]?.cleared), JSON.stringify(totals));
+  if (!ONLY_STAGES) check(d.name, 'all five stages saved as cleared', [1, 2, 3, 4, 5].every((i) => totals.stages[i]?.cleared), JSON.stringify(totals));
   check(d.name, 'no JS errors / failed requests', !errors.length, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -421,10 +427,12 @@ async function customerCast(browser) {
 }
 
 const browser = await launch();
-for (const d of DEVICES) await quick(browser, d);
-await customerCast(browser);
-await dualGrill(browser);
-await fullGame(browser, DEVICES[0]);
+if (!ONLY_STAGES) {
+  for (const d of DEVICES) await quick(browser, d);
+  await customerCast(browser);
+  await dualGrill(browser);
+  await fullGame(browser, DEVICES[0]);
+}
 await campaign(browser, DEVICES[0]);
 await browser.close();
 
