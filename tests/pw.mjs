@@ -10,6 +10,7 @@ for (const name of ['playwright-core', 'playwright']) {
 if (!pw) throw new Error('Playwright not found: run `npm i --no-save playwright-core`');
 
 export const chromium = pw.chromium;
+export const devices = pw.devices;
 export function launch() {
   const executablePath = process.env.CHROMIUM_PATH;
   return chromium.launch(executablePath ? { executablePath, args: ['--no-sandbox'] } : {});

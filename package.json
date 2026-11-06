@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "balance": "node tests/balance.mjs",
-    "e2e": "node tests/e2e.mjs http://127.0.0.1:8000/"
+    "e2e": "node tests/e2e.mjs http://127.0.0.1:8000/",
+    "iphone": "node tests/iphone.mjs http://127.0.0.1:8000/"
   }
 }
