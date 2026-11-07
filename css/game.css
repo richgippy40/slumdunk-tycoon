@@ -1950,3 +1950,19 @@ img {
 .sc-top:empty {
   display: none;
 }
+/* Fit an 8-character Korean name next to the amount. */
+.rank-panel {
+  width: 350px;
+  padding: 20px 16px 16px;
+}
+.rank-panel li {
+  gap: 8px;
+  padding: 0 10px;
+  font-size: 19px;
+}
+.rank-panel li b {
+  font-size: 16px;
+}
+.result-btns .big-btn {
+  white-space: nowrap;
+}
