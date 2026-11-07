@@ -80,6 +80,13 @@ const SOUNDS = {
   arrive: () => tone(988, 0, 0.12, { type: 'sine', vol: 0.12 }),
   unlock: () => [392, 523, 659, 784].forEach((f, i) => tone(f, i * 0.08, 0.2, { type: 'triangle', vol: 0.16 })),
   tick: () => tone(1400, 0, 0.04, { type: 'square', vol: 0.06 }),
+  // Stage 2+ (also synthesized; temporary)
+  fry: () => noise(0.5, { vol: 0.12, freq: 2500, q: 0.6 }),
+  ding: () => [1568, 2093].forEach((f, i) => tone(f, i * 0.09, 0.3, { type: 'sine', vol: 0.16 })),
+  pour: () => noise(0.35, { vol: 0.08, freq: 900, q: 1.5 }),
+  rush: () => [523, 659, 523, 784].forEach((f, i) => tone(f, i * 0.09, 0.14, { type: 'square', vol: 0.1 })),
+  fever: () => [659, 784, 988, 1319, 1568].forEach((f, i) => tone(f, i * 0.07, 0.22, { type: 'triangle', vol: 0.2 })),
+  vip: () => [784, 988, 1175, 1568, 1175, 1568].forEach((f, i) => tone(f, i * 0.1, 0.25, { type: 'sine', vol: 0.18 })),
   end: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, i * 0.12, 0.25, { type: 'triangle', vol: 0.2 })),
 };
 

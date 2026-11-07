@@ -1,13 +1,13 @@
 // Run with playwright-core installed: node tests/viewport.mjs [baseURL]
 // Synthetic visualViewport/safe-area regression; not a real iOS browser test.
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
+import { launch } from './pw.mjs';
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] });
+const browser = await launch();
 const failures = [];
 let checks = 0;
 try {
-  for (const [width, height] of [[844, 390], [852, 393], [932, 430], [1280, 720]]) {
+  for (const [width, height, stageId] of [[844, 390, 1], [852, 393, 1], [932, 430, 1], [1280, 720, 1], [844, 390, 5], [667, 375, 5], [932, 430, 5]]) {
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: true });
     const page = await context.newPage();
     await page.addInitScript(() => {
@@ -21,7 +21,10 @@ try {
       Object.assign(viewport, { offsetLeft: 0, offsetTop: 0 });
       Object.defineProperty(window, 'visualViewport', { value: viewport });
     });
-    await page.goto(process.argv[2] || 'http://127.0.0.1:8000/');
+    // Headless Chromium honours requestFullscreen, which then blocks viewport resizes.
+    await page.addInitScript(() => { Element.prototype.requestFullscreen = undefined; Element.prototype.webkitRequestFullscreen = undefined; });
+    await page.goto((process.argv[2] || 'http://127.0.0.1:8000/') + '?unlock=all');
+    await page.tap(`.stage-card[data-stage="${stageId}"]`);
     await page.tap('#startBtn');
     // Do not invoke the optional fullscreen button; toolbars must be supported.
     for (const scenario of [
@@ -43,14 +46,14 @@ try {
         // Sales grow during play; checking only the initial ₩0 misses HUD overflow.
         document.querySelector('#sales').textContent = '₩999,999';
         const bounds = { left: s.offsetLeft + safe[3], top: s.offsetTop + safe[0], right: s.offsetLeft + s.width - safe[1], bottom: s.offsetTop + s.height - safe[2] };
-        const outside = ['#stage', '.hud', '#sales', '#target', '#time', '#customers', '.grill-panel', '#grill', '#grill2', '.assembly-panel', '.tray-panel', '#pauseBtn', '#soundBtn', ...[...document.querySelectorAll('.tile')].map((_, i) => `.tile:nth-child(${i + 1})`)].filter(sel => {
+        const outside = ['#stage', '.hud', '#sales', '#target', '#time', '#customers', '.grill-panel', '#grill', '#grill2', '.assembly-panel', '.tray-panel', '#pauseBtn', '#soundBtn', ...(document.querySelector('#stage.has-sides') ? ['#fryer', '#fountain', '#comboMeter'] : []), ...[...document.querySelectorAll('.tile:not(.off)')].map((_, i) => `.tile:nth-child(${i + 1})`)].filter(sel => {
           const r = document.querySelector(sel).getBoundingClientRect();
           return r.left < bounds.left - 1 || r.top < bounds.top - 1 || r.right > bounds.right + 1 || r.bottom > bounds.bottom + 1;
         });
         return { outside, bounds, stage: document.querySelector('#stage').getBoundingClientRect().toJSON(), scroll: document.scrollingElement.scrollWidth > innerWidth + 1 || document.scrollingElement.scrollHeight > innerHeight + 1 };
       }, scenario);
       checks++;
-      if (measurements.outside.length || measurements.scroll) failures.push({ size: [width, height], scenario: scenario.name, ...measurements });
+      if (measurements.outside.length || measurements.scroll) failures.push({ size: [width, height], stage: stageId, scenario: scenario.name, ...measurements });
       // Native touch hit testing must still reach the transformed ingredient.
       await page.tap('.tile[data-key=bottom]');
       assert.equal(await page.locator('.layer').count(), 1);

@@ -108,3 +108,70 @@ export const bottlesSVG = `<svg viewBox="0 0 120 140"><rect x="6" y="110" width=
   <path d="M26 30 L36 10 L44 10 L54 30 L56 112 L24 112 Z" fill="url(#g-red)"/><rect x="34" y="2" width="12" height="10" rx="3" fill="#b8202a"/>
   <path d="M66 30 L76 10 L84 10 L94 30 L96 112 L64 112 Z" fill="url(#g-mustard)"/><rect x="74" y="2" width="12" height="10" rx="3" fill="#c98d1d"/>
   <ellipse cx="34" cy="60" rx="5" ry="22" fill="#fff" opacity=".35"/><ellipse cx="74" cy="60" rx="5" ry="22" fill="#fff" opacity=".35"/></svg>`;
+
+// ---------- Stage 2-5 additions ----------
+// Existing SLUMDUNK images reused for Stage 3 ingredients (were unused in Stage 1):
+// lettuce.webp, tomato.webp, bacon.webp, onion.webp (actually a fried egg).
+Object.assign(ICONS, {
+  lettuce: '<img src="assets/lettuce.webp" alt="">',
+  tomato: '<img src="assets/tomato.webp" alt="">',
+  bacon: '<img src="assets/bacon.webp" alt="">',
+  egg: '<img src="assets/onion.webp" alt="">',
+});
+// Top-down images pressed flat to read as side-view layers on the plate.
+Object.assign(LAYERS, {
+  lettuce: { h: 16, html: '<img src="assets/lettuce.webp" alt="" style="width:108%;height:46px;margin-top:-16px">' },
+  tomato: { h: 18, html: '<img src="assets/tomato.webp" alt="" style="width:94%;height:44px;margin-top:-14px">' },
+  bacon: { h: 14, html: '<img src="assets/bacon.webp" alt="" style="width:100%;height:42px;margin-top:-16px">' },
+  egg: { h: 18, html: '<img src="assets/onion.webp" alt="" style="width:96%;height:50px;margin-top:-18px">' },
+});
+
+const bunTop = `<path d="M14 52 C14 14 106 14 106 52 Z" fill="url(#g-bun)"/>
+  <ellipse cx="44" cy="30" rx="18" ry="7" fill="url(#g-shine)"/>
+  <g fill="#fff4d6">${[[38, 38], [56, 28], [74, 36], [86, 44], [50, 46], [66, 44]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3.4" ry="2" transform="rotate(-20 ${x} ${y})"/>`).join('')}</g>`;
+const bunBase = `<ellipse cx="60" cy="88" rx="46" ry="8" fill="#000" opacity=".15"/><path d="M16 70 Q16 86 60 86 Q104 86 104 70 Z" fill="url(#g-bun-base)"/>`;
+const lettuceBand = (y) => `<path d="M10 ${y} q6 -6 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t10 0 v5 H10 Z" fill="#6cc04a"/>`;
+const baconBand = (y) => `<path d="M12 ${y} q12 -7 24 0 t24 0 t24 0 t24 0 v6 q-12 7 -24 0 t-24 0 t-24 0 t-24 0 Z" fill="#c8402f"/><path d="M14 ${y + 2} q12 -6 24 0 t24 0 t24 0 t24 0" stroke="#ffb38a" stroke-width="2" fill="none"/>`;
+const patty = (y) => `<rect x="12" y="${y}" width="96" height="14" rx="7" fill="url(#g-patty)"/>`;
+const cheese = (y) => `<path d="M14 ${y} H106 L98 ${y + 9} L88 ${y + 4} L76 ${y + 12} L66 ${y + 4} L50 ${y + 11} L40 ${y + 4} L26 ${y + 11} Z" fill="url(#g-cheese)"/>`;
+const svgWrap = (inner) => `<svg viewBox="0 0 120 100" class="burger-icon">${bunBase}${inner}${bunTop}</svg>`;
+
+export const BURGER_ICONS = {
+  default: burgerIcon,
+  cheese: burgerIcon,
+  bacon: svgWrap(`${lettuceBand(68)}${patty(57)}${cheese(55)}${baconBand(49)}`),
+  allday: svgWrap(`<rect x="16" y="64" width="88" height="7" rx="3" fill="#e23b2e"/>${patty(54)}
+    <ellipse cx="60" cy="54" rx="44" ry="6" fill="#fffaf0"/><ellipse cx="60" cy="52" rx="13" ry="5" fill="#ffb21f"/>${baconBand(45)}`),
+  grand: svgWrap(`${patty(64)}${cheese(62)}${patty(52)}${cheese(50)}${baconBand(45)}`).replace('viewBox="0 0 120 100"', 'viewBox="0 -6 120 106"'),
+};
+export const burgerIconFor = (id) => BURGER_ICONS[id] || burgerIcon;
+
+// TEMPORARY ART: fries, drink, fryer and fountain (no SLUMDUNK assets exist yet).
+export const friesSVG = `<svg viewBox="0 0 80 90" class="fries-icon">
+  <g>${[[22, 8, -10], [30, 2, -4], [38, 0, 2], [46, 4, 7], [54, 10, 12], [26, 14, -6], [42, 10, 0], [50, 16, 8]]
+    .map(([x, y, r]) => `<rect x="${x}" y="${y}" width="8" height="46" rx="2" transform="rotate(${r} ${x + 4} ${y + 40})" fill="#ffd54a" stroke="#e0a21f" stroke-width="1.5"/>`).join('')}</g>
+  <path d="M12 36 L68 36 L60 86 L20 86 Z" fill="url(#g-red)"/>
+  <path d="M12 36 Q40 50 68 36" fill="#b8202a"/>
+  <text x="40" y="70" text-anchor="middle" font-size="13" font-weight="900" fill="#fff" font-family="Arial Black,Arial">SD</text>
+  <ellipse cx="24" cy="54" rx="4" ry="14" fill="#fff" opacity=".3"/></svg>`;
+export const drinkSVG = `<svg viewBox="0 0 70 96" class="drink-icon">
+  <rect x="38" y="0" width="7" height="34" rx="3" fill="#f6efe6" transform="rotate(12 41 34)"/>
+  <path d="M10 22 H60 L54 92 H16 Z" fill="#fff"/><path d="M10 22 H60 L58 40 H12 Z" fill="url(#g-red)"/>
+  <path d="M14 62 Q35 54 56 62" stroke="#d92d2f" stroke-width="5" fill="none"/>
+  <rect x="6" y="16" width="58" height="9" rx="4" fill="#e6e0d8"/>
+  <ellipse cx="22" cy="58" rx="4" ry="18" fill="#000" opacity=".06"/></svg>`;
+export const crownSVG = `<svg viewBox="0 0 60 40"><path d="M4 34 L8 8 L22 22 L30 4 L38 22 L52 8 L56 34 Z" fill="url(#g-gold)" stroke="#a86f10" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="30" cy="24" r="4" fill="#d92d2f"/></svg>`;
+export const fryerSVG = `<svg viewBox="0 0 200 120" class="fryer-art">
+  <rect x="10" y="40" width="180" height="76" rx="14" fill="url(#g-steel)"/>
+  <rect x="24" y="34" width="152" height="40" rx="10" fill="#3a2a12"/>
+  <rect x="28" y="42" width="144" height="28" rx="8" fill="#d99a2b" class="oil"/>
+  <g class="bubbles">${[44, 70, 98, 124, 150].map((x, i) => `<circle cx="${x}" cy="${56 + (i % 2) * 6}" r="4" fill="#ffe08a"/>`).join('')}</g>
+  <g class="basket"><rect x="46" y="2" width="108" height="50" rx="8" fill="none" stroke="#c9c9cf" stroke-width="5"/>
+    <path d="M52 14 H148 M52 26 H148 M52 38 H148 M76 4 V50 M100 4 V50 M124 4 V50" stroke="#a9a9ad" stroke-width="2"/>
+    <rect x="152" y="18" width="40" height="9" rx="4" fill="#272326"/></g></svg>`;
+export const fountainSVG = `<svg viewBox="0 0 200 120" class="fountain-art">
+  <rect x="34" y="0" width="132" height="58" rx="12" fill="url(#g-red)"/>
+  <text x="100" y="38" text-anchor="middle" font-size="26" font-weight="900" fill="#fff" font-family="Arial Black,Arial">COLA</text>
+  <rect x="88" y="56" width="24" height="12" rx="3" fill="#a9a9ad"/>
+  <rect x="30" y="104" width="140" height="12" rx="5" fill="url(#g-steel)"/></svg>`;
