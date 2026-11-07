@@ -222,6 +222,11 @@ async function fullGame(browser, d) {
   check(d.name, 'clear -> next stage button', !cleared || (await page.isVisible('#nextBtn')));
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('slumdunk-tycoon.progress.v1')));
   check(d.name, 'result saved to localStorage', saved?.stages?.[1]?.best > 0 && saved.stages[1].cleared === cleared, JSON.stringify(saved));
+  check(d.name, 'name field + empty TOP 5 on the result screen', (await page.isVisible('#nameInput')) && (await page.$$('#rankList li.empty')).length === 5);
+  await page.fill('#nameInput', '테스트점장');
+  await tapEl(page, d, '#nameBtn');
+  check(d.name, 'name registered as #1 on this device', (await text(page, '#nameDone')).includes('1위') && (await text(page, '#rankList li.me')).startsWith('테스트점장'), await text(page, '#nameDone'));
+  check(d.name, 'one entry per game (form hidden after saving)', !(await page.isVisible('#nameInput')));
 
   await tapEl(page, d, '#againBtn');
   await page.clock.runFor(500);
@@ -233,6 +238,7 @@ async function fullGame(browser, d) {
   await page.reload();
   check(d.name, 'unlock survives reload', !(await hasClass(page, '.stage-card[data-stage="2"]', 'locked')) && (await hasClass(page, '.stage-card[data-stage="3"]', 'locked')));
   check(d.name, 'best record shown on stage card', (await text(page, '.stage-card[data-stage="1"] .sc-best')).startsWith('BEST ₩'));
+  check(d.name, '1st place name on stage card survives reload', (await text(page, '.stage-card[data-stage="1"] .sc-top')).includes('테스트점장'));
   check(d.name, 'no JS errors / failed requests', !errors.length, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

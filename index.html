@@ -133,7 +133,7 @@
           <div class="card-goal"><span id="goalMinutes">5</span>분 동안 목표 매출 <b id="goalText">₩350,000</b></div>
           <button class="big-btn" id="startBtn">영업 시작!</button>
           <button class="link-btn" id="backBtn">← 스테이지 선택</button>
-          <div class="build-tag">V0.4 · 일부 그래픽·사운드는 임시 버전입니다</div>
+          <div class="build-tag">V0.5 · 일부 그래픽·사운드는 임시 버전입니다</div>
         </div>
       </div>
 
@@ -148,6 +148,7 @@
 
       <div class="overlay" id="resultScreen">
         <div class="confetti" id="confetti"></div>
+        <div class="result-wrap">
         <div class="card result-card">
           <div class="result-title" id="resultTitle">STAGE CLEAR!</div>
           <div class="result-stars" id="resultStars"></div>
@@ -155,11 +156,22 @@
           <div class="result-money" id="resultMoney">₩0</div>
           <div class="result-best" id="resultBest"></div>
           <div class="result-stats" id="resultStats"></div>
+          <form class="name-row" id="nameForm" autocomplete="off">
+            <input id="nameInput" type="text" maxlength="8" placeholder="이름을 적어 기록 남기기 (8자)" enterkeyhint="done" aria-label="랭킹에 남길 이름" />
+            <button type="submit" id="nameBtn">기록 등록</button>
+          </form>
+          <div class="name-done" id="nameDone"></div>
           <div class="result-btns">
             <button class="ghost-btn" id="menuBtn">스테이지</button>
             <button class="big-btn" id="againBtn">다시 하기</button>
             <button class="big-btn next" id="nextBtn">다음 스테이지 ▶</button>
           </div>
+        </div>
+        <aside class="rank-panel" id="rankPanel">
+          <h3>이 기기 <b>TOP 5</b></h3>
+          <ol id="rankList"></ol>
+          <p class="rank-note">이 기기에만 저장돼요</p>
+        </aside>
         </div>
       </div>
     </div>

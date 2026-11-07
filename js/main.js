@@ -6,7 +6,7 @@ import {
 } from './logic.js';
 import { STAGES, stageById } from './stages.js';
 import { BURGERS } from './menu.js';
-import { loadProgress, recordResult, isUnlocked } from './save.js';
+import { loadProgress, recordResult, isUnlocked, addRanking, rankingOf, cleanName } from './save.js';
 import * as art from './art.js';
 import * as sfx from './audio.js';
 
@@ -231,7 +231,7 @@ function drawSoundBtn() {
 drawSoundBtn();
 
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || e.target.closest?.('input, textarea')) return; // typing a name is not a game key
   if (e.key === ' ' || e.key === 'Enter') {
     if (!running && $('startScreen').classList.contains('show')) {
       sfx.unlock();
@@ -303,7 +303,10 @@ function showSelect() {
       <span class="sc-name">${s.name}</span>
       <span class="sc-stars">${stars(rec?.stars || 0)}</span>
       <span class="sc-best">${rec?.best ? 'BEST ' + won(rec.best) : open ? s.title : '이전 스테이지 클리어 시 오픈'}</span>
+      <span class="sc-top"></span>
       ${open ? '' : `<span class="sc-lock">${art.lockSVG}</span>`}`;
+    const top = rankingOf(progress, s.id)[0];
+    if (top) b.querySelector('.sc-top').textContent = `👑 ${top.name} ${won(top.sales)}`;
     press(b, () => {
       if (!open) {
         flash(b, 'shake');
@@ -700,12 +703,60 @@ function finish(r) {
   const canNext = !!next && isUnlocked(progress, next.id, unlockAll);
   $('nextBtn').style.display = canNext ? '' : 'none';
   $('againBtn').classList.toggle('ghostish', canNext && r.cleared);
+  lastResult = r;
+  $('nameInput').value = progress.lastName || '';
+  $('nameForm').hidden = false;
+  $('nameDone').textContent = '';
+  drawRanking();
   setTimeout(() => {
     showOverlay('resultScreen');
     if (r.cleared) confetti(grand ? 140 : 60);
     if (grand) sfx.play('fever');
   }, 600);
 }
+
+// ---------- Name ranking (this device only) ----------
+let lastResult = null;
+let highlight = null; // the entry just registered
+
+function drawRanking() {
+  const list = rankingOf(progress, cfg.id);
+  const ol = $('rankList');
+  ol.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const e = list[i];
+    const li = document.createElement('li');
+    li.className = (e ? '' : 'empty') + (e && e === highlight ? ' me' : '');
+    const name = document.createElement('span');
+    name.textContent = e ? e.name : '—';
+    const money = document.createElement('b');
+    money.textContent = e ? won(e.sales) : '';
+    li.append(name, money);
+    ol.append(li);
+  }
+}
+
+$('nameForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = cleanName($('nameInput').value);
+  if (!name || !lastResult) {
+    flash($('nameInput'), 'shake');
+    $('nameInput').focus();
+    return;
+  }
+  const res = addRanking(progress, cfg.id, name, lastResult);
+  progress = res.progress;
+  highlight = rankingOf(progress, cfg.id)[res.rank - 1] || null;
+  lastResult = null; // one entry per game
+  $('nameInput').blur();
+  $('nameForm').hidden = true;
+  $('nameDone').textContent = res.rank
+    ? `${name}님, 이 기기 ${res.rank}위로 등록됐어요!`
+    : `${name}님의 기록은 TOP 10 밖이에요. 다시 도전!`;
+  drawRanking();
+  sfx.unlock();
+  sfx.play(res.rank === 1 ? 'fever' : 'coin');
+});
 
 // ---------- Render ----------
 let stackKey = '';

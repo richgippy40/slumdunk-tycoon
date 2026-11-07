@@ -1790,3 +1790,179 @@ img {
   left: 160px;
   right: 252px;
 }
+
+/* ---------- Result: name entry + this-device ranking (V0.5) ---------- */
+.result-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.result-wrap .result-card {
+  width: 660px;
+}
+.name-row {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.name-row[hidden] {
+  display: none;
+}
+.name-row input {
+  flex: 1;
+  min-width: 0;
+  height: 60px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 30px;
+  background: #1c191c;
+  box-shadow: inset 0 0 0 3px #ffffff30;
+  color: var(--cream);
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  /* the page disables selection for gameplay; typing needs it back */
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: manipulation;
+}
+.name-row input::placeholder {
+  color: #ffffff70;
+  font-weight: 700;
+}
+.name-row input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--gold);
+}
+.name-row input.shake {
+  animation: shake 0.3s 2;
+}
+.name-row button {
+  flex: none;
+  width: 150px;
+  height: 60px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #ffd877, #f5be45 55%, #d9962b);
+  box-shadow: 0 5px 0 #8a5a10, inset 0 3px 0 #fff8;
+  color: #3a2405;
+  font-size: 22px;
+  font-weight: 900;
+}
+.name-row button:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #8a5a10, inset 0 3px 0 #fff8;
+}
+.name-done {
+  min-height: 0;
+  margin: -6px 0 12px;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--gold);
+}
+.name-done:empty {
+  display: none;
+}
+.rank-panel {
+  width: 300px;
+  padding: 20px 20px 16px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #3d373c, #272326);
+  box-shadow: 0 0 0 4px #ffffff14, 0 20px 50px #000c;
+  animation: pop 0.35s 0.1s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.rank-panel h3 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  text-align: center;
+}
+.rank-panel h3 b {
+  color: var(--gold);
+}
+.rank-panel ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rank;
+}
+.rank-panel li {
+  counter-increment: rank;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  background: #1c191c;
+  font-size: 21px;
+  font-weight: 800;
+}
+.rank-panel li::before {
+  content: counter(rank);
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #48424a;
+  font-size: 17px;
+  font-weight: 900;
+}
+.rank-panel li:first-child::before {
+  background: linear-gradient(180deg, #ffd877, #d9962b);
+  color: #3a2405;
+}
+.rank-panel li span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-panel li b {
+  font-size: 18px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.rank-panel li.empty {
+  opacity: 0.4;
+}
+.rank-panel li.me {
+  box-shadow: 0 0 0 3px var(--gold), 0 0 16px #f5be4588;
+  animation: bump 0.6s 2;
+}
+.rank-note {
+  margin: 6px 0 0;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.6;
+}
+.sc-top {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gold);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-top:empty {
+  display: none;
+}
+/* Fit an 8-character Korean name next to the amount. */
+.rank-panel {
+  width: 350px;
+  padding: 20px 16px 16px;
+}
+.rank-panel li {
+  gap: 8px;
+  padding: 0 10px;
+  font-size: 19px;
+}
+.rank-panel li b {
+  font-size: 16px;
+}
+.result-btns .big-btn {
+  white-space: nowrap;
+}
