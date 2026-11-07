@@ -386,3 +386,28 @@ test('balance (V0.5, 30% easier): experts 3 stars, casual always clears, beginne
     assert.ok(slow.every((r) => !r.cleared), `stage ${s.id}: slow player should not clear`);
   }
 });
+
+// ---------- Name ranking (this device only) ----------
+test('name ranking: cleaned names, sorted by sales, ties to the earlier entry, capped per stage', async () => {
+  const { addRanking, rankingOf, cleanName, recordResult, RANK_SIZE, NAME_MAX } = await import('../js/save.js');
+  assert.equal(cleanName('  민수   님  '), '민수 님');
+  assert.equal([...cleanName('가나다라마바사아자차')].length, NAME_MAX);
+  let p = { stages: {} };
+  assert.equal(addRanking(p, 1, '   ', { sales: 5000 }).rank, 0, 'blank names are not saved');
+  ({ progress: p } = addRanking(p, 1, 'A', { sales: 100000 }, 1));
+  const b = addRanking(p, 1, 'B', { sales: 100000 }, 2);
+  assert.equal(b.rank, 2, 'same score: earlier entry stays ahead');
+  p = b.progress;
+  const c = addRanking(p, 1, 'C', { sales: 200000 }, 3);
+  assert.equal(c.rank, 1);
+  p = c.progress;
+  assert.deepEqual(rankingOf(p, 1).map((e) => e.name), ['C', 'A', 'B']);
+  assert.equal(p.lastName, 'C', 'last name is remembered for the next game');
+  assert.deepEqual(rankingOf(p, 2), [], 'rankings are per stage');
+  for (let i = 0; i < RANK_SIZE + 3; i++) p = addRanking(p, 1, 'X' + i, { sales: 300000 + i }, 10 + i).progress;
+  assert.equal(rankingOf(p, 1).length, RANK_SIZE);
+  assert.equal(addRanking(p, 1, 'low', { sales: 1 }, 99).rank, 0, 'below the kept list');
+  // finishing another game must not wipe the ranking
+  p = recordResult(p, 1, { sales: 1000, cleared: false, stars: 0 }).progress;
+  assert.equal(rankingOf(p, 1).length, RANK_SIZE);
+});
